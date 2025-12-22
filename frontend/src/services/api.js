@@ -1,0 +1,34 @@
+import axios from 'axios'
+
+const API_BASE_URL = 'http://localhost:8080/api'
+
+export default {
+  async createGame(whitePlayer, blackPlayer, isOnlineMode = false) {
+    const response = await axios.post(`${API_BASE_URL}/games`, {
+      whitePlayer,
+      blackPlayer,
+      isOnlineMode
+    })
+    return response.data
+  },
+
+  async getGame(gameId) {
+    const response = await axios.get(`${API_BASE_URL}/games/${gameId}`)
+    return response.data
+  },
+
+  async makeMove(gameId, move) {
+    const response = await axios.post(`${API_BASE_URL}/games/${gameId}/move`, move)
+    return response.data
+  },
+
+  async getAllGames() {
+    const response = await axios.get(`${API_BASE_URL}/games`)
+    return response.data
+  },
+
+  async getPlayerGames(playerName) {
+    const response = await axios.get(`${API_BASE_URL}/games/player/${playerName}`)
+    return response.data
+  }
+}

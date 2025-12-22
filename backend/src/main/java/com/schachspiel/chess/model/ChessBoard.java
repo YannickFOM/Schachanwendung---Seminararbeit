@@ -263,8 +263,7 @@ public class ChessBoard {
             for (int col = 0; col < 8; col++) {
                 Piece piece = board[row][col];
                 if (piece != null && piece.getColor() != color) {
-                    Move testMove = new Move(new Position(row, col), kingPosition, piece, null, false, false, null);
-                    if (isValidMove(testMove)) {
+                    if (canPieceAttackSquare(piece, new Position(row, col), kingPosition)) {
                         return true;
                     }
                 }
@@ -272,6 +271,30 @@ public class ChessBoard {
         }
         
         return false;
+    }
+    
+    private boolean canPieceAttackSquare(Piece piece, Position from, Position to) {
+        if (!to.isValid()) {
+            return false;
+        }
+        
+        return switch (piece.getType()) {
+            case PAWN -> canPawnAttack(from, to, piece);
+            case ROOK -> isValidRookMove(from, to);
+            case KNIGHT -> isValidKnightMove(from, to);
+            case BISHOP -> isValidBishopMove(from, to);
+            case QUEEN -> isValidQueenMove(from, to);
+            case KING -> isValidKingMove(from, to, piece);
+        };
+    }
+    
+    private boolean canPawnAttack(Position from, Position to, Piece piece) {
+        int direction = piece.getColor() == PieceColor.WHITE ? 1 : -1;
+        int rowDiff = to.getRow() - from.getRow();
+        int colDiff = Math.abs(to.getCol() - from.getCol());
+        
+        // Pawns only attack diagonally
+        return colDiff == 1 && rowDiff == direction;
     }
     
     private Position findKing(PieceColor color) {

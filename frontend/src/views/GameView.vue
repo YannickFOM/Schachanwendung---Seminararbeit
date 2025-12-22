@@ -108,23 +108,15 @@ export default {
     }
 
     const calculateValidMoves = (row, col) => {
-      // Simplified validation - in production this should call backend
+      // Note: Client-side validation removed to rely on backend validation
+      // In a future version, this could call a backend endpoint to get valid moves
       validMoves.value = []
       
       const piece = board.value[row]?.[col]
       if (!piece) return
 
-      // Generate potential moves based on piece type
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          if (r !== row || c !== col) {
-            validMoves.value.push({
-              from: { row, col },
-              to: { row: r, col: c }
-            })
-          }
-        }
-      }
+      // For now, we don't highlight valid moves on the client side
+      // The backend will validate moves when they are attempted
     }
 
     const goBack = () => {

@@ -16,7 +16,7 @@
         <div v-if="getPiece(8 - row, col - 1)" class="piece">
           {{ getPieceSymbol(getPiece(8 - row, col - 1)) }}
         </div>
-        <div class="coordinates" v-if="col === 1">{{ 8 - row + 1 }}</div>
+        <div class="coordinates" v-if="col === 1">{{ 9 - row }}</div>
         <div class="coordinates" v-if="row === 8">{{ String.fromCharCode(96 + col) }}</div>
       </div>
     </div>

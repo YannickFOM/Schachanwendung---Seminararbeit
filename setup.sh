@@ -30,9 +30,28 @@ if ! command -v npm &> /dev/null; then
 fi
 echo "✓ npm found: $(npm --version)"
 
+if ! command -v docker &> /dev/null; then
+    echo "⚠️  Docker is not installed. Skipping PostgreSQL setup."
+    echo "   Please install Docker or setup PostgreSQL manually."
+    SKIP_DOCKER=true
+else
+    echo "✓ Docker found: $(docker --version)"
+    if ! command -v docker-compose &> /dev/null; then
+        echo "⚠️  docker-compose is not installed. Skipping PostgreSQL setup."
+        SKIP_DOCKER=true
+    else
+        echo "✓ docker-compose found: $(docker-compose --version)"
+        SKIP_DOCKER=false
+    fi
+fi
+
 echo ""
-echo "Starting PostgreSQL with Docker Compose..."
-docker-compose up -d
+if [ "$SKIP_DOCKER" = false ]; then
+    echo "Starting PostgreSQL with Docker Compose..."
+    docker-compose up -d
+else
+    echo "Skipping Docker setup. Please ensure PostgreSQL is running manually."
+fi
 
 echo ""
 echo "Installing backend dependencies..."

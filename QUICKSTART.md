@@ -5,7 +5,6 @@
 - Java 17+
 - Maven 3.6+
 - Node.js 18+
-- Docker (optional, für einfache Datenbank-Einrichtung)
 
 ## Option 1: Automatische Installation (empfohlen)
 
@@ -16,33 +15,12 @@
 
 Das Skript:
 1. Prüft alle Voraussetzungen
-2. Startet PostgreSQL mit Docker Compose
-3. Installiert Backend-Dependencies
-4. Installiert Frontend-Dependencies
+2. Installiert Backend-Dependencies
+3. Installiert Frontend-Dependencies
 
 ## Option 2: Manuelle Installation
 
-### 1. Datenbank starten
-
-**Mit Docker:**
-```bash
-docker-compose up -d
-```
-
-**Ohne Docker:**
-```bash
-# PostgreSQL installieren und starten
-sudo service postgresql start
-
-# Datenbank erstellen
-psql -U postgres
-CREATE DATABASE chess_db;
-CREATE USER chess_user WITH PASSWORD 'chess_password';
-GRANT ALL PRIVILEGES ON DATABASE chess_db TO chess_user;
-\q
-```
-
-### 2. Backend starten
+### 1. Backend starten
 
 ```bash
 cd backend
@@ -52,7 +30,7 @@ mvn spring-boot:run
 
 Backend läuft auf: http://localhost:8080
 
-### 3. Frontend starten
+### 2. Frontend starten
 
 In einem neuen Terminal:
 ```bash
@@ -87,8 +65,7 @@ Frontend läuft auf: http://localhost:5173
 ## Fehlerbehebung
 
 ### Backend startet nicht
-- Prüfen Sie, ob PostgreSQL läuft: `docker-compose ps`
-- Prüfen Sie die Datenbank-Verbindung in `backend/src/main/resources/application.properties`
+- Stellen Sie sicher, dass Port 8080 frei ist.
 
 ### Frontend startet nicht
 - Löschen Sie `frontend/node_modules` und führen Sie `npm install` erneut aus

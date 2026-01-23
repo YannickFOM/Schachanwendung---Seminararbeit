@@ -183,9 +183,10 @@ export default {
 }
 
 .menu-card h2 {
-  color: #333;
+  color: #2c3e50;
   margin-bottom: 20px;
   font-size: 28px;
+  font-weight: bold;
 }
 
 .game-form {
@@ -202,7 +203,8 @@ export default {
 .form-group label {
   margin-bottom: 8px;
   font-weight: bold;
-  color: #555;
+  color: #2c3e50;
+  font-size: 1.1rem;
 }
 
 .form-group input[type="text"] {

@@ -30,5 +30,12 @@ export default {
   async getPlayerGames(playerName) {
     const response = await axios.get(`${API_BASE_URL}/games/player/${playerName}`)
     return response.data
+  },
+
+  async getValidMoves(gameId, row, col) {
+    const response = await axios.get(`${API_BASE_URL}/games/${gameId}/valid-moves`, {
+      params: { row, col }
+    })
+    return response.data
   }
 }

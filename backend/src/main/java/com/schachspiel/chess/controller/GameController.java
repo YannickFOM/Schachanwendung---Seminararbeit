@@ -12,46 +12,65 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/games")
-@CrossOrigin(origins = "*")
+
 public class GameController {
-    
+
     @Autowired
     private GameService gameService;
-    
+
     @PostMapping
     public ResponseEntity<Game> createGame(@RequestBody Map<String, Object> request) {
-        String whitePlayer = (String) request.get("whitePlayer");
-        String blackPlayer = (String) request.get("blackPlayer");
-        boolean isOnlineMode = (boolean) request.getOrDefault("isOnlineMode", false);
-        
-        Game game = gameService.createGame(whitePlayer, blackPlayer, isOnlineMode);
-        return ResponseEntity.ok(game);
+        System.out.println("Received createGame request: " + request);
+        try {
+            String whitePlayer = (String) request.get("whitePlayer");
+            String blackPlayer = (String) request.get("blackPlayer");
+            boolean isOnlineMode = (boolean) request.getOrDefault("isOnlineMode", false);
+
+            Game game = gameService.createGame(whitePlayer, blackPlayer, isOnlineMode);
+            System.out.println("Created game: " + game);
+            return ResponseEntity.ok(game);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
-    
+
     @GetMapping
     public ResponseEntity<List<Game>> getAllGames() {
         return ResponseEntity.ok(gameService.getAllGames());
     }
-    
+
     @GetMapping("/{id}")
     public ResponseEntity<Game> getGame(@PathVariable Long id) {
         return gameService.getGame(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     @GetMapping("/player/{playerName}")
     public ResponseEntity<List<Game>> getPlayerGames(@PathVariable String playerName) {
         return ResponseEntity.ok(gameService.getGamesByPlayer(playerName));
     }
-    
+
     @PostMapping("/{id}/move")
     public ResponseEntity<?> makeMove(@PathVariable Long id, @RequestBody Move move) {
+        System.out.println("Received move request for game " + id + ": " + move);
         try {
             Game game = gameService.makeMove(id, move);
+            System.out.println("Move successful, new state: " + game.getBoardState());
             return ResponseEntity.ok(game);
         } catch (Exception e) {
+            System.out.println("Move failed: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}/valid-moves")
+    public ResponseEntity<List<Move>> getValidMoves(
+            @PathVariable Long id,
+            @RequestParam int row,
+            @RequestParam int col) {
+        return ResponseEntity.ok(gameService.getValidMoves(id, row, col));
     }
 }

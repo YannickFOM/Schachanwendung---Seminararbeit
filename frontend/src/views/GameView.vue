@@ -15,6 +15,7 @@
         :board="board"
         :selected-square="selectedSquare"
         :valid-moves="validMoves"
+        :check-state="checkState"
         @square-click="handleSquareClick"
       />
     </div>
@@ -27,7 +28,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ChessBoard from '../components/ChessBoard.vue'
 import api from '../services/api'
@@ -47,8 +48,15 @@ export default {
     const blackPlayer = ref('')
     const currentTurn = ref('WHITE')
     const gameStatus = ref('IN_PROGRESS')
+    const isCheck = ref(false)
     const selectedSquare = ref(null)
     const validMoves = ref([])
+
+    const checkState = computed(() => ({
+      isCheck: isCheck.value,
+      isMate: gameStatus.value === 'CHECKMATE',
+      turn: currentTurn.value
+    }))
 
     const loadGame = async () => {
       try {
@@ -57,6 +65,7 @@ export default {
         blackPlayer.value = game.blackPlayer
         currentTurn.value = game.currentTurn
         gameStatus.value = game.status
+        isCheck.value = game.check
         
         if (game.boardState) {
           const boardData = JSON.parse(game.boardState)
@@ -76,16 +85,23 @@ export default {
         const piece = board.value[row]?.[col]
         if (piece && piece.color === currentTurn.value) {
           selectedSquare.value = { row, col }
-          calculateValidMoves(row, col)
+          // Fetch valid moves from backend
+          try {
+            validMoves.value = await api.getValidMoves(gameId.value, row, col)
+            console.log('Fetched valid moves:', validMoves.value)
+          } catch (e) {
+            console.error("Failed to load valid moves", e)
+          }
         }
       } else {
-        // Try to move
-        const isValidMove = validMoves.value.some(
-          move => move.to.row === row && move.to.col === col
-        )
+        // Deselect if clicking same square
+        if (selectedSquare.value.row === row && selectedSquare.value.col === col) {
+            selectedSquare.value = null
+            return
+        }
 
-        if (isValidMove) {
-          try {
+        // Try to move directly (let backend validate)
+        try {
             const move = {
               from: selectedSquare.value,
               to: { row, col },
@@ -96,10 +112,9 @@ export default {
 
             await api.makeMove(gameId.value, move)
             await loadGame()
-          } catch (error) {
+        } catch (error) {
             console.error('Error making move:', error)
-            alert('Ungültiger Zug')
-          }
+            alert('Ungültiger Zug!: ' + (error.response?.data?.error || error.message))
         }
 
         selectedSquare.value = null
@@ -139,6 +154,7 @@ export default {
       gameStatus,
       selectedSquare,
       validMoves,
+      checkState,
       handleSquareClick,
       goBack,
       newGame
@@ -170,10 +186,12 @@ export default {
 }
 
 .game-info {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.6);
   padding: 15px;
   border-radius: 10px;
   backdrop-filter: blur(10px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  color: white;
 }
 
 .game-info p {

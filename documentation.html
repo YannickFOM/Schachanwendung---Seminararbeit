@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Projekt-Dokumentation: Schachspiel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { color: #2c3e50; margin-top: 30px; }
+        h3 { color: #34495e; margin-top: 20px; }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: Consolas, monospace;
+            color: #d63384;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            overflow-x: auto;
+        }
+        pre code {
+            background-color: transparent;
+            color: #333;
+            padding: 0;
+        }
+        ul { margin-bottom: 20px; }
+        li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<h1>Projekt-Dokumentation: Schachspiel Refactoring & Features</h1>
+
+<p>Diese Dokumentation fasst die durchgeführten Arbeiten am Schachspiel-Projekt zusammen, inklusive relevanter Code-Ausschnitte.</p>
+
+<h2>1. Initiale Analyse & Datenbank-Entfernung</h2>
+<p><strong>Ziel</strong>: Vereinfachung der Architektur für eine lokale Seminar-Demo.</p>
+<ul>
+    <li><strong>Maßnahme</strong>: Entfernung der PostgreSQL-Datenbank.</li>
+    <li><strong>Code</strong>: Umstellung auf In-Memory Storage im <code>GameService</code>.</li>
+</ul>
+
+<pre><code>// GameService.java
+// Statt @Repository nutzen wir eine ConcurrentHashMap für schnelle lokale Speicherung
+private final java.util.Map&lt;Long, Game&gt; games = new java.util.concurrent.ConcurrentHashMap&lt;&gt;();
+private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);</code></pre>
+
+<h2>2. Debugging & Fehlerbehebung</h2>
+
+<h3>JSON Mapping Fehler</h3>
+<ul>
+    <li><strong>Problem</strong>: Das Frontend sendete <code>isCastling</code>, das Backend erwartete <code>castling</code>.</li>
+    <li><strong>Lösung</strong>: Explizites Mapping via Jackson Annotationen.</li>
+</ul>
+
+<pre><code>// Move.java
+@JsonProperty("isCastling")
+private boolean isCastling;
+
+@JsonProperty("isEnPassant")
+private boolean isEnPassant;</code></pre>
+
+<h2>3. Implementierung der Schach-Logik</h2>
+
+<h3>Simulation gültiger Züge (Check Protection)</h3>
+<ul>
+    <li><strong>Logik</strong>: Ein Zug ist nur legal, wenn der eigene König danach nicht im Schach steht. Wir simulieren den Zug auf einer Kopie des Brettes.</li>
+</ul>
+
+<pre><code>// ChessBoard.java
+public boolean isLegalMove(Move move) {
+    // 1. Geometrische Prüfung
+    if (!isValidMove(move)) return false;
+    
+    // 2. Simulation auf Kopie
+    ChessBoard simulation = this.copy();
+    simulation.makeMove(move); 
+    
+    // 3. Prüfen ob König im Schach steht
+    return !simulation.isInCheck(this.currentTurn); 
+}</code></pre>
+
+<h3>En Passant Erkennung</h3>
+<ul>
+    <li><strong>Logik</strong>: Das Backend erkennt En Passant automatisch, wenn ein Bauer diagonal auf ein leeres Feld zieht, das als <code>enPassantTarget</code> markiert ist.</li>
+</ul>
+
+<pre><code>// ChessBoard.java - makeMove()
+if (piece.getType() == PieceType.PAWN && 
+    Math.abs(to.getCol() - from.getCol()) == 1 && // Diagonal
+    getPieceAt(to) == null && // Ziel ist leer
+    enPassantTarget != null && to.equals(enPassantTarget)) { // Passt zum Target
+    
+    isEnPassantMove = true;
+    move.setEnPassant(true);
+}</code></pre>
+
+<h3>Schachmatt & Patt</h3>
+<ul>
+    <li><strong>Logik</strong>: Nach jedem Zug wird geprüft, ob der Gegner noch ziehen kann.</li>
+</ul>
+
+<pre><code>// GameService.java
+boolean inCheck = board.isInCheck(board.getCurrentTurn());
+game.setCheck(inCheck); // Status für Frontend speichern
+
+if (board.isCheckmate(board.getCurrentTurn())) {
+    game.setStatus(GameStatus.CHECKMATE);
+} else if (board.isStalemate(board.getCurrentTurn())) {
+    game.setStatus(GameStatus.STALEMATE);
+}</code></pre>
+
+<h2>4. UI & Design Verbesserungen</h2>
+
+<h3>Schachbrett & Figuren Styling</h3>
+<ul>
+    <li><strong>Design</strong>: Nutzung von CSS <code>text-shadow</code> für hohen Kontrast der Unicode-Figuren.</li>
+    <li><strong>Zughilfen</strong>: Nutzung von Pseudo-Elementen (<code>::after</code>) für Punkte und Ringe.</li>
+</ul>
+
+<pre><code>/* ChessBoard.vue */
+
+/* Weiße Figuren mit schwarzem Rand für bessere Sichtbarkeit */
+.white-piece {
+  color: #ffffff;
+  text-shadow: 
+    -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000, 1px 1px 0 #000,
+    0px 2px 4px rgba(0,0,0,0.5);
+}
+
+/* Mögliche Züge als graue Punkte */
+.valid-move::after {
+  content: '';
+  position: absolute;
+  width: 24px; height: 24px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  z-index: 30; /* Über den Figuren */
+}
+
+/* Schlag-Züge als roter Ring */
+.board-square.capture-move::after {
+    background: transparent;
+    border: 6px solid rgba(200, 50, 50, 0.5);
+    width: 70px; height: 70px;
+}</code></pre>
+
+<h3>König Highlights bei Schach</h3>
+<ul>
+    <li><strong>Frontend</strong>: Dynamische Klassen basierend auf dem Spielstatus.</li>
+</ul>
+
+<pre><code>// ChessBoard.vue
+isKingInCheck(row, col) {
+  if (!this.checkState.isCheck) return false
+  const piece = this.getPiece(row, col)
+  // Markiere nur den König der aktuellen Farbe
+  return piece && piece.type === 'KING' && piece.color === this.checkState.turn
+}</code></pre>
+
+<pre><code>/* Rotes Leuchten bei Schach */
+.king-check {
+  background-color: rgba(255, 60, 60, 0.6) !important;
+  box-shadow: inset 0 0 10px 5px rgba(255, 0, 0, 0.5);
+}</code></pre>
+
+</body>
+</html>

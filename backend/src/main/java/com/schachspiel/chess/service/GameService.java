@@ -1,78 +1,104 @@
 package com.schachspiel.chess.service;
 
 import com.schachspiel.chess.model.*;
-import com.schachspiel.chess.repository.GameRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class GameService {
-    
-    @Autowired
-    private GameRepository gameRepository;
-    
+
+    // In-memory storage
+    private final java.util.Map<Long, Game> games = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);
+
     @Autowired
     private ObjectMapper objectMapper;
-    
+
     public Game createGame(String whitePlayer, String blackPlayer, boolean isOnlineMode) {
         Game game = new Game();
+        game.setId(idGenerator.getAndIncrement());
         game.setWhitePlayer(whitePlayer);
         game.setBlackPlayer(blackPlayer);
         game.setCurrentTurn(PieceColor.WHITE);
         game.setStatus(GameStatus.IN_PROGRESS);
         game.setOnlineMode(isOnlineMode);
-        
+        game.onCreate();
+
         ChessBoard board = new ChessBoard();
         game.setBoardState(serializeBoard(board));
         game.setMoveHistory("[]");
-        
-        return gameRepository.save(game);
+
+        games.put(game.getId(), game);
+        return game;
     }
-    
+
     public Optional<Game> getGame(Long id) {
-        return gameRepository.findById(id);
+        return Optional.ofNullable(games.get(id));
     }
-    
+
     public List<Game> getAllGames() {
-        return gameRepository.findAll();
+        return new ArrayList<>(games.values());
     }
-    
+
     public List<Game> getGamesByPlayer(String playerName) {
-        return gameRepository.findByWhitePlayerOrBlackPlayer(playerName, playerName);
+        return games.values().stream()
+                .filter(g -> playerName.equals(g.getWhitePlayer()) || playerName.equals(g.getBlackPlayer()))
+                .collect(java.util.stream.Collectors.toList());
     }
-    
+
     public Game makeMove(Long gameId, Move move) throws Exception {
-        Optional<Game> gameOpt = gameRepository.findById(gameId);
-        if (gameOpt.isEmpty()) {
+        Game game = games.get(gameId);
+        if (game == null) {
             throw new Exception("Game not found");
         }
-        
-        Game game = gameOpt.get();
-        ChessBoard board = deserializeBoard(game.getBoardState());
-        
-        if (!board.isValidMove(move)) {
-            throw new Exception("Invalid move");
+
+        // Ensure it's the correct turn
+        // Note: Client might send moves out of turn, verify locally
+        if (game.getStatus() != GameStatus.IN_PROGRESS) {
+            throw new Exception("Game is over");
         }
-        
+
+        ChessBoard board = deserializeBoard(game.getBoardState());
+
+        // Use IS LEGAL MOVE (checks king safety) instead of just valid move
+        if (!board.isLegalMove(move)) {
+            throw new Exception("Invalid move or King is in check");
+        }
+
         board.makeMove(move);
-        
+
         game.setBoardState(serializeBoard(board));
         game.setCurrentTurn(board.getCurrentTurn());
         game.setMoveHistory(addMoveToHistory(game.getMoveHistory(), move));
-        
+        game.onUpdate();
+
         // Check for checkmate or stalemate
-        if (board.isInCheck(board.getCurrentTurn())) {
-            // Simplified: just set status, full checkmate detection would require more logic
-            game.setStatus(GameStatus.IN_PROGRESS);
+        boolean inCheck = board.isInCheck(board.getCurrentTurn());
+        game.setCheck(inCheck);
+
+        if (board.isCheckmate(board.getCurrentTurn())) {
+            game.setStatus(GameStatus.CHECKMATE);
+        } else if (board.isStalemate(board.getCurrentTurn())) {
+            game.setStatus(GameStatus.STALEMATE);
         }
-        
-        return gameRepository.save(game);
+
+        return game;
     }
-    
+
+    public List<Move> getValidMoves(Long gameId, int row, int col) {
+        Game game = games.get(gameId);
+        if (game == null)
+            return new ArrayList<>();
+
+        ChessBoard board = deserializeBoard(game.getBoardState());
+        return board.getValidMoves(new Position(row, col));
+    }
+
     private String serializeBoard(ChessBoard board) {
         try {
             return objectMapper.writeValueAsString(board);
@@ -80,7 +106,7 @@ public class GameService {
             return "{}";
         }
     }
-    
+
     private ChessBoard deserializeBoard(String boardState) {
         try {
             return objectMapper.readValue(boardState, ChessBoard.class);
@@ -88,11 +114,11 @@ public class GameService {
             return new ChessBoard();
         }
     }
-    
+
     private String addMoveToHistory(String moveHistory, Move move) {
         try {
-            List<Move> moves = objectMapper.readValue(moveHistory, 
-                objectMapper.getTypeFactory().constructCollectionType(List.class, Move.class));
+            List<Move> moves = objectMapper.readValue(moveHistory,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, Move.class));
             moves.add(move);
             return objectMapper.writeValueAsString(moves);
         } catch (JsonProcessingException e) {

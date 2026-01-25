@@ -342,7 +342,11 @@ public class ChessBoard {
             // Promotion
             if ((to.getRow() == 7 && piece.getColor() == PieceColor.WHITE) ||
                     (to.getRow() == 0 && piece.getColor() == PieceColor.BLACK)) {
-                piece.setType(move.getPromotionPiece() != null ? move.getPromotionPiece() : PieceType.QUEEN);
+                PieceType promo = move.getPromotionPiece() != null ? move.getPromotionPiece() : PieceType.QUEEN;
+                if (promo == PieceType.KING || promo == PieceType.PAWN) {
+                    promo = PieceType.QUEEN;
+                }
+                piece.setType(promo);
             }
         }
         enPassantTarget = nextEnPassantTarget;

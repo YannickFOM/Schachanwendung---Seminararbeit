@@ -1,7 +1,7 @@
 <template>
   <div class="home-view">
     <div class="header">
-      <h1>Schachspiel</h1>
+      <h1>Yannicks Schachapp</h1>
       <p class="subtitle">Online und Offline Schach spielen</p>
     </div>
 
@@ -32,10 +32,13 @@
           </div>
 
           <div class="form-group">
-            <label class="checkbox-label">
-              <input v-model="isOnlineMode" type="checkbox" />
-              Online-Modus
-            </label>
+            <label for="timeLimit">Zeitlimit</label>
+            <select id="timeLimit" v-model="timeLimit" required>
+              <option :value="5">5 Sekunden (Test)</option>
+              <option :value="300">5 Minuten</option>
+              <option :value="600">10 Minuten</option>
+              <option :value="null">Unbegrenzt</option>
+            </select>
           </div>
 
           <button type="submit" class="btn btn-primary">
@@ -58,15 +61,14 @@
           >
             <div class="game-info">
               <strong>{{ game.whitePlayer }}</strong> vs <strong>{{ game.blackPlayer }}</strong>
+              <span class="time-badge">{{ formatTimeLimit(game.timeLimit) }}</span>
             </div>
             <div class="game-status">
               Status: {{ getStatusText(game.status) }}
             </div>
           </div>
         </div>
-        <button @click="loadGames" class="btn btn-secondary">
-          Spiele aktualisieren
-        </button>
+
       </div>
     </div>
   </div>
@@ -85,6 +87,7 @@ export default {
     const whitePlayer = ref('')
     const blackPlayer = ref('')
     const isOnlineMode = ref(false)
+    const timeLimit = ref(300)
     const games = ref([])
 
     const startGame = async () => {
@@ -92,7 +95,8 @@ export default {
         const game = await api.createGame(
           whitePlayer.value,
           blackPlayer.value,
-          isOnlineMode.value
+          isOnlineMode.value,
+          timeLimit.value
         )
         router.push(`/game/${game.id}`)
       } catch (error) {
@@ -125,6 +129,12 @@ export default {
       return statusMap[status] || status
     }
 
+    const formatTimeLimit = (seconds) => {
+      if (seconds === null) return 'Unbegrenzt'
+      if (seconds === 5) return '5 Sek (Test)'
+      return Math.floor(seconds / 60) + ' Min'
+    }
+
     onMounted(() => {
       loadGames()
     })
@@ -133,11 +143,13 @@ export default {
       whitePlayer,
       blackPlayer,
       isOnlineMode,
+      timeLimit,
       games,
       startGame,
       loadGames,
       continueGame,
-      getStatusText
+      getStatusText,
+      formatTimeLimit
     }
   }
 }
@@ -220,6 +232,21 @@ export default {
   border-color: #667eea;
 }
 
+.form-group select {
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -275,6 +302,7 @@ export default {
 .games-list {
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
   margin-bottom: 20px;
 }
 
@@ -296,10 +324,77 @@ export default {
 .game-info {
   font-size: 16px;
   margin-bottom: 5px;
+  color: #2c3e50; /* Darker text */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.time-badge {
+  background: #eee;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: #555;
+  font-weight: bold;
 }
 
 .game-status {
   font-size: 14px;
-  color: #666;
+  color: #444; /* Slightly darker grey */
+  font-weight: 500;
+}
+
+/* Promotion Modal */
+.promotion-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.promotion-modal {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.promotion-modal h3 {
+  color: #2c3e50;
+  margin-top: 0;
+}
+
+.promotion-options {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.promo-btn {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.promo-btn:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+  border-color: #667eea;
 }
 </style>

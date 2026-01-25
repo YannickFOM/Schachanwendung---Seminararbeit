@@ -3,11 +3,12 @@ import axios from 'axios'
 const API_BASE_URL = 'http://localhost:8080/api'
 
 export default {
-  async createGame(whitePlayer, blackPlayer, isOnlineMode = false) {
+  async createGame(whitePlayer, blackPlayer, isOnlineMode = false, timeLimit = null) {
     const response = await axios.post(`${API_BASE_URL}/games`, {
       whitePlayer,
       blackPlayer,
-      isOnlineMode
+      isOnlineMode,
+      timeLimit
     })
     return response.data
   },
@@ -35,6 +36,13 @@ export default {
   async getValidMoves(gameId, row, col) {
     const response = await axios.get(`${API_BASE_URL}/games/${gameId}/valid-moves`, {
       params: { row, col }
+    })
+    return response.data
+  },
+
+  async getBoardAtMove(gameId, moveIndex) {
+    const response = await axios.get(`${API_BASE_URL}/games/${gameId}/board`, {
+      params: { move: moveIndex }
     })
     return response.data
   }

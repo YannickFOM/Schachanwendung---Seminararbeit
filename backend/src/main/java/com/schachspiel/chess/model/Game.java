@@ -22,6 +22,8 @@ public class Game {
 
     private PieceColor currentTurn;
 
+    private String winner; // "WHITE" or "BLACK"
+
     private GameStatus status;
 
     private LocalDateTime createdAt;
@@ -31,6 +33,13 @@ public class Game {
     private boolean isOnlineMode;
 
     private boolean isCheck;
+
+    // Time in seconds. null means unlimited.
+    private Integer timeLimit;
+
+    private Integer whiteTimeRemaining;
+
+    private Integer blackTimeRemaining;
 
     public void onCreate() {
         createdAt = LocalDateTime.now();

@@ -25,8 +25,9 @@ public class GameController {
             String whitePlayer = (String) request.get("whitePlayer");
             String blackPlayer = (String) request.get("blackPlayer");
             boolean isOnlineMode = (boolean) request.getOrDefault("isOnlineMode", false);
+            Integer timeLimit = request.containsKey("timeLimit") ? (Integer) request.get("timeLimit") : null;
 
-            Game game = gameService.createGame(whitePlayer, blackPlayer, isOnlineMode);
+            Game game = gameService.createGame(whitePlayer, blackPlayer, isOnlineMode, timeLimit);
             System.out.println("Created game: " + game);
             return ResponseEntity.ok(game);
         } catch (Exception e) {
@@ -72,5 +73,16 @@ public class GameController {
             @RequestParam int row,
             @RequestParam int col) {
         return ResponseEntity.ok(gameService.getValidMoves(id, row, col));
+    }
+
+    @GetMapping("/{id}/board")
+    public ResponseEntity<?> getBoardAtMove(
+            @PathVariable Long id,
+            @RequestParam int move) {
+        try {
+            return ResponseEntity.ok(gameService.getBoardAtMove(id, move));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

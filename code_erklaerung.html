@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Detaillierte Code-Erklärung: Schachspiel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-top: 60px;
+            font-size: 2em;
+            border-left: 8px solid #667eea;
+            padding-left: 15px;
+            background: #f8f9fa;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #34495e;
+            margin-top: 40px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        h4 {
+            color: #0d6efd;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: Consolas, monospace;
+            margin: 15px 0;
+            border: 1px solid #333;
+        }
+
+        .code-comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        .keyword {
+            color: #569cd6;
+        }
+
+        .string {
+            color: #ce9178;
+        }
+
+        .class-name {
+            color: #4ec9b0;
+        }
+
+        .method-name {
+            color: #dcdcaa;
+        }
+
+        .explanation {
+            background: #e8f4fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .explanation p {
+            margin: 0 0 10px 0;
+        }
+
+        .explanation p:last-child {
+            margin-bottom: 0;
+        }
+
+        ul {
+            margin-top: 5px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Detaillierte Code-Erklärung</h1>
+    <p>Dieses Dokument führt Zeile für Zeile (oder Block für Block) durch die wichtigsten Dateien des Projekts. Ziel ist
+        es, genau zu verstehen, <strong>wie</strong> die Komponenten funktionieren und <strong>warum</strong> sie so
+        geschrieben wurden.</p>
+
+    <h2>Teil 1: Das Backend (Java Spring Boot)</h2>
+    <p>Wir starten beim Server. Hier liegt die Wahrheit: Regeln, Spielstand, Logik.</p>
+
+    <h3>1. Der Startpunkt: <code>ChessApplication.java</code></h3>
+    <div class="code-block">
+        <span class="keyword">package</span> com.schachspiel.chess;
+        <span class="keyword">import</span> org.springframework.boot.SpringApplication;
+        <span class="keyword">import</span> org.springframework.boot.autoconfigure.SpringBootApplication;
+
+        <div class="code-comment">@SpringBootApplication // Magie: Das hier sagt Java "Ich bin ein Webserver"</div>
+        <span class="keyword">public class</span> <span class="class-name">ChessApplication</span> {
+        <span class="keyword">public static void</span> <span class="method-name">main</span>(String[] args) {
+        <span class="class-name">SpringApplication</span>.run(<span class="class-name">ChessApplication</span>.<span
+            class="keyword">class</span>, args);
+        }
+        }
+    </div>
+    <div class="explanation">
+        <p><strong>Was passiert hier?</strong></p>
+        <p>Das ist der Zündschlüssel. Wenn wir das Programm starten, sucht Spring Boot nach allem, was es braucht
+            (Datenbanken, Web-Konfigurationen, Controller) und startet einen Tomcat-Webserver auf Port 8080.</p>
+    </div>
+
+
+    <h3>2. Die Daten-Struktur: <code>Game.java</code></h3>
+    <p>Pfad: <code>model/Game.java</code>. Das hier ist unser "Spielbrett" im Speicher.</p>
+    <div class="code-block">
+        <span class="keyword">public class</span> <span class="class-name">Game</span> {
+        <span class="keyword">private</span> Long id; <span class="code-comment">// Eindeutige ID (Spiel #1, Spiel
+            #2...)</span>
+        <span class="keyword">private</span> String whitePlayer;
+        <span class="keyword">private</span> String blackPlayer;
+
+        <span class="code-comment">// Das Wichtigste: Der Zustand des Brettes als TEXT (JSON)</span>
+        <span class="code-comment">// Wir speichern nicht das komplexe Java-Objekt direkt, sondern "serialisieren"
+            es</span>
+        <span class="keyword">private</span> String boardState;
+
+        <span class="keyword">private</span> String moveHistory; <span class="code-comment">// "E2 nach E4", "D7 nach
+            D5"...</span>
+
+        <span class="keyword">private</span> <span class="class-name">Integer</span> timeLimit; <span
+            class="code-comment">// z.B. 300 Sekunden (5 Min)</span>
+        <span class="keyword">private</span> <span class="class-name">Integer</span> whiteTimeRemaining; <span
+            class="code-comment">// Aktuelle Restzeit Weiß</span>
+        <span class="keyword">private</span> <span class="class-name">LocalDateTime</span> lastMoveAt; <span
+            class="code-comment">// Wann war der letzte Zug? (Zum Berechnen der Zeit)</span>
+
+        <span class="keyword">public void</span> <span class="method-name">onUpdate</span>() {
+        lastMoveAt = <span class="class-name">LocalDateTime</span>.now(); <span class="code-comment">// Zeitstempel
+            aktualisieren</span>
+        }
+        }
+    </div>
+    <div class="explanation">
+        <p><strong>Warum `String boardState`?</strong></p>
+        <p>Ein Schachbrett ist ein komplexes Geflecht aus Figuren und Referenzen. Um es einfach zu speichern (früher
+            Datenbank, jetzt RAM) und an das Frontend zu schicken, verwandeln wir es in einen langen Text (JSON). Wenn
+            wir damit arbeiten müssen, verwandeln wir es kurz zurück.</p>
+    </div>
+
+
+    <h3>3. Das Gehirn: <code>ChessBoard.java</code></h3>
+    <p>Pfad: <code>model/ChessBoard.java</code>. Hier sind die Schachregeln definiert. Das ist die größte und wichtigste
+        Klasse.</p>
+
+    <h4>Das Gitter initialisieren</h4>
+    <div class="code-block">
+        <span class="keyword">public class</span> <span class="class-name">ChessBoard</span> {
+        <span class="keyword">private</span> Piece[][] board; <span class="code-comment">// Ein 8x8 Array. [0][0] ist
+            A8, [7][7] ist H1.</span>
+
+        <span class="keyword">private void</span> <span class="method-name">initializeBoard</span>() {
+        <span class="code-comment">// Bauern aufstellen</span>
+        <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i < 8; i++) { board[1][i]=<span
+            class="keyword">new</span> <span class="class-name">Piece</span>(<span
+                class="class-name">PieceType</span>.PAWN, <span class="class-name">PieceColor</span>.WHITE); <span
+                class="code-comment">// Reihe 1 (Weiß)</span>
+            board[6][i] = <span class="keyword">new</span> <span class="class-name">Piece</span>(<span
+                class="class-name">PieceType</span>.PAWN, <span class="class-name">PieceColor</span>.BLACK); <span
+                class="code-comment">// Reihe 6 (Schwarz)</span>
+            }
+            <span class="code-comment">// ... Türme, Springer etc. werden hier manuell gesetzt</span>
+            }
+            }
+    </div>
+
+    <h4>Die Zug-Prüfung (Simulations-Logik)</h4>
+    <p>Darf ich diesen Zug machen? Um diese Frage zu beantworten, müssen wir in die Zukunft schauen: "Wenn ich das
+        mache, steht mein König dann im Schach?"</p>
+    <div class="code-block">
+        <span class="keyword">public boolean</span> <span class="method-name">isLegalMove</span>(<span
+            class="class-name">Move</span> move) {
+        <span class="code-comment">// 1. Geometrische Prüfung: Zieht der Läufer wirklich diagonal?</span>
+        <span class="keyword">if</span> (!isValidMove(move)) {
+        <span class="keyword">return false</span>;
+        }
+
+        <span class="code-comment">// 2. Simulation: Wir kopieren das ganze Brett!</span>
+        <span class="class-name">ChessBoard</span> simulation = <span class="keyword">this</span>.copy();
+        simulation.makeMove(move); <span class="code-comment">// Führe den Zug auf der Kopie aus</span>
+
+        <span class="code-comment">// 3. Prüfung: Steht mein eigener König jetzt im Feuer?</span>
+        <span class="keyword">return</span> !simulation.isInCheck(<span class="keyword">this</span>.currentTurn);
+        }
+    </div>
+    <div class="explanation">
+        <p>Dieser Trick (Simulation auf Kopie) spart uns tausende Zeilen Code für Sonderfälle. Egal wie wild der Zug ist
+            – wir probieren ihn einfach aus und schauen, ob der König stirbt.</p>
+    </div>
+
+    <h4>En Passant Logik</h4>
+    <div class="code-block">
+        <span class="code-comment">// Automatisches Erkennen von En Passant</span>
+        <span class="keyword">if</span> (piece.getType() == <span class="class-name">PieceType</span>.PAWN &&
+        <span class="class-name">Math</span>.abs(to.getCol() - from.getCol()) == 1 && <span class="code-comment">//
+            Diagonal gezogen?</span>
+        getPieceAt(to) == <span class="keyword">null</span> && <span class="code-comment">// Zielfeld leer? (Das ist
+            komisch für einen Schlag-Zug...)</span>
+        enPassantTarget != <span class="keyword">null</span> && to.equals(enPassantTarget)) { <span
+            class="code-comment">// Aber es ist das En Passant Feld!</span>
+
+        <span class="code-comment">// Dann ist es En Passant!</span>
+        move.setEnPassant(<span class="keyword">true</span>);
+        }
+    </div>
+
+
+    <h3>4. Der Manager: <code>GameService.java</code></h3>
+    <p>Pfad: <code>service/GameService.java</code>. Er verbindet Controller (API) und Model (Schachbrett).</p>
+
+    <h4>Zug ausführen</h4>
+    <div class="code-block">
+        <span class="keyword">public</span> <span class="class-name">Game</span> <span
+            class="method-name">makeMove</span>(<span class="class-name">Long</span> gameId, <span
+            class="class-name">Move</span> move) {
+        <span class="class-name">Game</span> game = games.get(gameId); <span class="code-comment">// Spiel laden</span>
+
+        <span class="code-comment">// Brett aus dem Text (JSON) wiederbeleben</span>
+        <span class="class-name">ChessBoard</span> board = deserializeBoard(game.getBoardState());
+
+        <span class="code-comment">// Ist der Zug überhaupt legal?</span>
+        <span class="keyword">if</span> (!board.isLegalMove(move)) {
+        <span class="keyword">throw new</span> <span class="class-name">Exception</span>(<span
+            class="string">"Ungültiger Zug"</span>);
+        }
+
+        board.makeMove(move); <span class="code-comment">// Zug auf dem Brett ausführen</span>
+
+        <span class="code-comment">// Zeit berechnen</span>
+        <span class="keyword">long</span> elapsed = <span
+            class="class-name">Duration</span>.between(game.getLastMoveAt(), <span
+            class="class-name">Now</span>()).getSeconds();
+        game.setWhiteTimeRemaining(game.getWhiteTimeRemaining() - elapsed);
+
+        <span class="code-comment">// Brett wieder einfrieren (in Text umwandeln) und speichern</span>
+        game.setBoardState(serializeBoard(board));
+
+        <span class="keyword">return</span> game;
+        }
+    </div>
+
+    <h4>Das Zeitreise-Feature (Analyse)</h4>
+    <div class="code-block">
+        <span class="keyword">public</span> <span class="class-name">String</span> <span
+            class="method-name">getBoardAtMove</span>(<span class="class-name">Long</span> id, <span
+            class="keyword">int</span> moveIndex) {
+        <span class="code-comment">// Wir laden ALLE Züge, die jemals gemacht wurden</span>
+        <span class="class-name">List</span>&lt;<span class="class-name">Move</span>&gt; history = loadHistory(id);
+
+        <span class="code-comment">// Wir nehmen ein LEERES, neues Brett</span>
+        <span class="class-name">ChessBoard</span> replayBoard = <span class="keyword">new</span> <span
+            class="class-name">ChessBoard</span>();
+
+        <span class="code-comment">// Wir spielen die Züge 0 bis X einfach schnell nach</span>
+        <span class="keyword">for</span> (<span class="keyword">int</span> i = 0; i < moveIndex; i++) {
+            replayBoard.makeMove(history.get(i)); } <span class="keyword">return</span> serializeBoard(replayBoard);
+            }
+    </div>
+    <div class="explanation">
+        <p>Anstatt hunderte Kopien des Brettes für jeden Zug zu speichern, speichern wir nur die Züge. Da Computer
+            schnell sind, können wir jederzeit das Brett "errechnen", das nach Zug 15 existierte, indem wir einfach die
+            ersten 15 Züge nochmal machen.</p>
+    </div>
+
+
+    <h2>Teil 2: Das Frontend (Vue.js)</h2>
+    <p>Hier passiert das, was der Benutzer sieht.</p>
+
+    <h3>1. Die Ansicht: <code>GameView.vue</code></h3>
+    <p>Diese Datei steuert den Ablauf.</p>
+
+    <h4>Das Brett einbinden</h4>
+    <div class="code-block">
+        &lt;<span class="class-name">template</span>&gt;
+        &lt;<span class="class-name">div</span> class=<span class="string">"game-container"</span>&gt;
+        &lt;<span class="class-name">ChessBoard</span>
+        :board=<span class="string">"board"</span> <span class="code-comment">&lt;!-- Die Daten: Wo stehen Figuren?
+            --&gt;</span>
+        :valid-moves=<span class="string">"validMoves"</span> <span class="code-comment">&lt;!-- Wo darf ich hinziehen?
+            --&gt;</span>
+        :is-rotated=<span class="string">"isBoardRotated"</span> <span class="code-comment">&lt;!-- Soll das Brett
+            gedreht sein? --&gt;</span>
+        @square-click=<span class="string">"handleSquareClick"</span> <span class="code-comment">&lt;!-- Wenn der User
+            klickt, sag mir Bescheid! --&gt;</span>
+        /&gt;
+        &lt;/<span class="class-name">div</span>&gt;
+        &lt;/<span class="class-name">template</span>&gt;
+    </div>
+
+    <h4>Die Klick-Logik (`handleSquareClick`)</h4>
+    <div class="code-block">
+        <span class="keyword">const</span> <span class="method-name">handleSquareClick</span> = (position) => {
+        <span class="keyword">if</span> (!selectedSquare.value) {
+        <span class="code-comment">// 1. Klick: Figur auswählen</span>
+        selectedSquare.value = position;
+        <span class="code-comment">// Frage Backend: Wo darf die hin?</span>
+        api.getValidMoves(gameId, position).then(moves => validMoves.value = moves);
+        } <span class="keyword">else</span> {
+        <span class="code-comment">// 2. Klick: Wohin soll sie ziehen?</span>
+        <span class="keyword">const</span> move = { from: selectedSquare.value, to: position };
+
+        <span class="code-comment">// Sende Zug an Backend</span>
+        api.makeMove(gameId, move).then(() => {
+        loadGame(); <span class="code-comment">// Alles neu laden nach Erfolg</span>
+        });
+        }
+        }
+    </div>
+
+    <h3>2. Die Komponente: <code>ChessBoard.vue</code></h3>
+    <p>Hier wird es bunt. Diese Datei zeichnet die Pixel.</p>
+
+    <h4>Das Rendern der Felder</h4>
+    <div class="code-block">
+        &lt;<span class="class-name">div</span>
+        v-for=<span class="string">"row in 8"</span>
+        class=<span class="string">"board-square"</span>
+        :class=<span class="string">"{
+            'light-square': (row + col) % 2 === 0,
+            'dark-square': (row + col) % 2 === 1,
+            'selected': isSelected(row, col), // Gelber Hintergrund wenn ausgewählt
+            'last-move-highlight': isLastMove(row, col) // Gelber Hintergrund für letzten Zug
+            }"</span>
+        &gt;
+        <span class="code-comment">&lt;!-- Wenn hier eine Figur ist, zeichne sie --&gt;</span>
+        &lt;<span class="class-name">div</span> v-if=<span class="string">"getPiece(row, col)"</span> class=<span
+            class="string">"piece"</span>&gt;
+        {{ getPieceSymbol(piece) }} <span class="code-comment">&lt;!-- Wandelt 'PAWN' in '♟' um --&gt;</span>
+        &lt;/<span class="class-name">div</span>&gt;
+        &lt;/<span class="class-name">div</span>&gt;
+    </div>
+
+    <div class="explanation">
+        <p><strong>Die visuelle Magie (CSS)</strong></p>
+        <p>Wir nutzen CSS-Klassen wie <code>.last-move-highlight</code>, um Zustände sichtbar zu machen. Vue.js
+            berechnet blitzschnell für alle 64 Felder, welche Klasse gerade aktiv sein muss. Wir müssen uns nicht um das
+            Löschen alter Klassen kümmern – Vue macht das automatisch beim nächsten Update.</p>
+    </div>
+
+</body>
+
+</html>

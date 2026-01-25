@@ -6,5 +6,6 @@ public enum GameStatus {
     CHECKMATE,
     STALEMATE,
     DRAW,
-    RESIGNED
+    RESIGNED,
+    VICTORY_BY_TIME
 }

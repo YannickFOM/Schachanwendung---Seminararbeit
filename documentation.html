@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <title>Projekt-Dokumentation: Schachspiel</title>
@@ -12,9 +13,23 @@
             line-height: 1.6;
             color: #333;
         }
-        h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        h2 { color: #2c3e50; margin-top: 30px; }
-        h3 { color: #34495e; margin-top: 20px; }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-top: 30px;
+        }
+
+        h3 {
+            color: #34495e;
+            margin-top: 20px;
+        }
+
         code {
             background-color: #f8f9fa;
             padding: 2px 5px;
@@ -22,6 +37,7 @@
             font-family: Consolas, monospace;
             color: #d63384;
         }
+
         pre {
             background-color: #f8f9fa;
             padding: 15px;
@@ -29,56 +45,76 @@
             border: 1px solid #e9ecef;
             overflow-x: auto;
         }
+
         pre code {
             background-color: transparent;
             color: #333;
             padding: 0;
         }
-        ul { margin-bottom: 20px; }
-        li { margin-bottom: 5px; }
+
+        ul {
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
     </style>
 </head>
+
 <body>
 
-<h1>Projekt-Dokumentation: Schachspiel Refactoring & Features</h1>
+    <h1>Projekt-Dokumentation: Schachspiel Refactoring & Features</h1>
 
-<p>Diese Dokumentation fasst die durchgeführten Arbeiten am Schachspiel-Projekt zusammen, inklusive relevanter Code-Ausschnitte.</p>
+    <p>Diese Dokumentation fasst die durchgeführten Arbeiten am Schachspiel-Projekt zusammen, inklusive relevanter
+        Code-Ausschnitte.</p>
 
-<h2>1. Initiale Analyse & Datenbank-Entfernung</h2>
-<p><strong>Ziel</strong>: Vereinfachung der Architektur für eine lokale Seminar-Demo.</p>
-<ul>
-    <li><strong>Maßnahme</strong>: Entfernung der PostgreSQL-Datenbank.</li>
-    <li><strong>Code</strong>: Umstellung auf In-Memory Storage im <code>GameService</code>.</li>
-</ul>
+    <h2>1. Initiale Analyse & Datenbank-Entfernung</h2>
+    <p><strong>Ziel</strong>: Vereinfachung der Architektur für eine lokale Seminar-Demo.</p>
+    <ul>
+        <li><strong>Maßnahme</strong>: Entfernung der PostgreSQL-Datenbank.</li>
+        <li><strong>Code</strong>: Umstellung auf In-Memory Storage im <code>GameService</code>.</li>
+    </ul>
 
-<pre><code>// GameService.java
+    <pre><code>// GameService.java
 // Statt @Repository nutzen wir eine ConcurrentHashMap für schnelle lokale Speicherung
 private final java.util.Map&lt;Long, Game&gt; games = new java.util.concurrent.ConcurrentHashMap&lt;&gt;();
 private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);</code></pre>
 
-<h2>2. Debugging & Fehlerbehebung</h2>
+    <h2>2. Debugging & Fehlerbehebung</h2>
 
-<h3>JSON Mapping Fehler</h3>
-<ul>
-    <li><strong>Problem</strong>: Das Frontend sendete <code>isCastling</code>, das Backend erwartete <code>castling</code>.</li>
-    <li><strong>Lösung</strong>: Explizites Mapping via Jackson Annotationen.</li>
-</ul>
+    <h3>JSON Mapping Fehler</h3>
+    <ul>
+        <li><strong>Problem</strong>: Das Frontend sendete <code>isCastling</code>, das Backend erwartete
+            <code>castling</code>.
+        </li>
+        <li><strong>Lösung</strong>: Explizites Mapping via Jackson Annotationen.</li>
+    </ul>
 
-<pre><code>// Move.java
+    <pre><code>// Move.java
 @JsonProperty("isCastling")
 private boolean isCastling;
 
 @JsonProperty("isEnPassant")
 private boolean isEnPassant;</code></pre>
 
-<h2>3. Implementierung der Schach-Logik</h2>
+    <h3>Timer-Übermittlung (API)</h3>
+    <ul>
+        <li><strong>Problem</strong>: Das gewählte Zeitlimit wurde im Frontend ignoriert und nicht an das Backend
+            gesendet.</li>
+        <li><strong>Lösung</strong>: Anpassung der <code>createGame</code> Methode in <code>api.js</code>, um den
+            Parameter korrekt weiterzuleiten.</li>
+    </ul>
 
-<h3>Simulation gültiger Züge (Check Protection)</h3>
-<ul>
-    <li><strong>Logik</strong>: Ein Zug ist nur legal, wenn der eigene König danach nicht im Schach steht. Wir simulieren den Zug auf einer Kopie des Brettes.</li>
-</ul>
+    <h2>3. Implementierung der Schach-Logik</h2>
 
-<pre><code>// ChessBoard.java
+    <h3>Simulation gültiger Züge (Check Protection)</h3>
+    <ul>
+        <li><strong>Logik</strong>: Ein Zug ist nur legal, wenn der eigene König danach nicht im Schach steht. Wir
+            simulieren den Zug auf einer Kopie des Brettes.</li>
+    </ul>
+
+    <pre><code>// ChessBoard.java
 public boolean isLegalMove(Move move) {
     // 1. Geometrische Prüfung
     if (!isValidMove(move)) return false;
@@ -91,12 +127,13 @@ public boolean isLegalMove(Move move) {
     return !simulation.isInCheck(this.currentTurn); 
 }</code></pre>
 
-<h3>En Passant Erkennung</h3>
-<ul>
-    <li><strong>Logik</strong>: Das Backend erkennt En Passant automatisch, wenn ein Bauer diagonal auf ein leeres Feld zieht, das als <code>enPassantTarget</code> markiert ist.</li>
-</ul>
+    <h3>En Passant Erkennung</h3>
+    <ul>
+        <li><strong>Logik</strong>: Das Backend erkennt En Passant automatisch, wenn ein Bauer diagonal auf ein leeres
+            Feld zieht, das als <code>enPassantTarget</code> markiert ist.</li>
+    </ul>
 
-<pre><code>// ChessBoard.java - makeMove()
+    <pre><code>// ChessBoard.java - makeMove()
 if (piece.getType() == PieceType.PAWN && 
     Math.abs(to.getCol() - from.getCol()) == 1 && // Diagonal
     getPieceAt(to) == null && // Ziel ist leer
@@ -106,12 +143,12 @@ if (piece.getType() == PieceType.PAWN &&
     move.setEnPassant(true);
 }</code></pre>
 
-<h3>Schachmatt & Patt</h3>
-<ul>
-    <li><strong>Logik</strong>: Nach jedem Zug wird geprüft, ob der Gegner noch ziehen kann.</li>
-</ul>
+    <h3>Schachmatt & Patt</h3>
+    <ul>
+        <li><strong>Logik</strong>: Nach jedem Zug wird geprüft, ob der Gegner noch ziehen kann.</li>
+    </ul>
 
-<pre><code>// GameService.java
+    <pre><code>// GameService.java
 boolean inCheck = board.isInCheck(board.getCurrentTurn());
 game.setCheck(inCheck); // Status für Frontend speichern
 
@@ -121,15 +158,18 @@ if (board.isCheckmate(board.getCurrentTurn())) {
     game.setStatus(GameStatus.STALEMATE);
 }</code></pre>
 
-<h2>4. UI & Design Verbesserungen</h2>
+    <h2>4. UI & Design Verbesserungen</h2>
 
-<h3>Schachbrett & Figuren Styling</h3>
-<ul>
-    <li><strong>Design</strong>: Nutzung von CSS <code>text-shadow</code> für hohen Kontrast der Unicode-Figuren.</li>
-    <li><strong>Zughilfen</strong>: Nutzung von Pseudo-Elementen (<code>::after</code>) für Punkte und Ringe.</li>
-</ul>
+    <h3>Schachbrett & Figuren Styling</h3>
+    <ul>
+        <li><strong>Design</strong>: Nutzung von CSS <code>text-shadow</code> für hohen Kontrast der Unicode-Figuren.
+        </li>
+        <li><strong>Zughilfen</strong>: Nutzung von Pseudo-Elementen (<code>::after</code>) für Punkte und Ringe.</li>
+        <li><strong>Cleanup</strong>: Fehlerhafte "Neues Spiel"-Schaltfläche im Spiel entfernt (Fokus auf
+            Menü-Navigation).</li>
+    </ul>
 
-<pre><code>/* ChessBoard.vue */
+    <pre><code>/* ChessBoard.vue */
 
 /* Weiße Figuren mit schwarzem Rand für bessere Sichtbarkeit */
 .white-piece {
@@ -157,12 +197,12 @@ if (board.isCheckmate(board.getCurrentTurn())) {
     width: 70px; height: 70px;
 }</code></pre>
 
-<h3>König Highlights bei Schach</h3>
-<ul>
-    <li><strong>Frontend</strong>: Dynamische Klassen basierend auf dem Spielstatus.</li>
-</ul>
+    <h3>König Highlights bei Schach</h3>
+    <ul>
+        <li><strong>Frontend</strong>: Dynamische Klassen basierend auf dem Spielstatus.</li>
+    </ul>
 
-<pre><code>// ChessBoard.vue
+    <pre><code>// ChessBoard.vue
 isKingInCheck(row, col) {
   if (!this.checkState.isCheck) return false
   const piece = this.getPiece(row, col)
@@ -170,11 +210,110 @@ isKingInCheck(row, col) {
   return piece && piece.type === 'KING' && piece.color === this.checkState.turn
 }</code></pre>
 
-<pre><code>/* Rotes Leuchten bei Schach */
+    <pre><code>/* Rotes Leuchten bei Schach */
 .king-check {
   background-color: rgba(255, 60, 60, 0.6) !important;
   box-shadow: inset 0 0 10px 5px rgba(255, 0, 0, 0.5);
 }</code></pre>
 
+    <h3>Offline-Modus Features (Hotseat)</h3>
+    <ul>
+        <li><strong>UI</strong>: "Online-Modus" ausgeblendet für Fokus auf lokale Demo.</li>
+        <li><strong>Auto-Rotation</strong>: Das Brett dreht sich automatisch 180° zum aktiven Spieler.</li>
+        <li><strong>Anti-Rotation</strong>: Figuren drehen sich mit, damit sie immer aufrecht bleiben.</li>
+    </ul>
+
+    <pre><code>/* ChessBoard.vue - Rotation */
+.chess-board.rotated {
+  /* Standard "ease-in-out" (0.8s) - Schnell aber natürlich */
+  transition: transform 0.8s ease-in-out;
+  transform: rotate(180deg);
+}</code></pre>
+
+    <h2>5. Schachuhr & Zeitmanagement</h2>
+    <p>Das Spiel wurde um eine konfigurierbare Schachuhr erweitert, um kompetitive Rahmenbedingungen zu schaffen.</p>
+
+    <h3>Funktionsumfang</h3>
+    <ul>
+        <li><strong>Konfiguration</strong>: Vor Spielbeginn wählbar (5 Min, 10 Min, Unbegrenzt).</li>
+        <li><strong>Split-UI</strong>: Visuelle Trennung der Spielerbereiche (Weiß links, Schwarz rechts).</li>
+        <li><strong>Feedback</strong>: Der aktive Spieler wird hervorgehoben, inaktive Timer ausgegraut.</li>
+        <li><strong>Game Over Logik (Instant Timeout)</strong>:
+            <ul>
+                <li>Wenn der Timer 0:00 erreicht, endet das Spiel <strong>sofort</strong>.</li>
+                <li>Das Brett "friert ein" (keine Interaktion mehr möglich).</li>
+                <li>Eine klare Meldung verkündet den Sieger (z.B. "Schwarz hat gewonnen").</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>Technische Umsetzung</h3>
+    <ul>
+        <li><strong>Frontend (Vue.js)</strong>:
+            <ul>
+                <li>Lokaler Countdown via <code>setInterval</code> für flüssige Anzeige.</li>
+                <li>Synchronisation mit Server-Status bei jedem Zug (`loadGame`).</li>
+            </ul>
+        </li>
+        <li><strong>Backend (Java)</strong>:
+            <ul>
+                <li><code>timeLimit</code> (in Sekunden) wird im <code>Game</code>-Objekt gespeichert.</li>
+                <li>Exakte Berechnung der verbrauchten Zeit basierend auf Timestamps (`lastMoveAt`).</li>
+                <li>Validierung: Server ist die "Single Source of Truth" für die verbleibende Zeit.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2>6. Analyse-Modus (Review Tool)</h2>
+    <p>Nach Abschluss einer Partie steht ein umfangreiches Analyse-Tool zur Verfügung, um den Spielverlauf zu
+        untersuchen.</p>
+
+    <h3>Funktionsumfang</h3>
+    <ul>
+        <li><strong>Historie-Navigation</strong>: Buttons (Start, Vor, Zurück, Ende) erlauben das Abspielen der gesamten
+            Partie.</li>
+        <li><strong>Manueller Perspektivwechsel</strong>: Das Brett kann jederzeit gedreht werden (Flip), unabhängig
+            davon, wer am Zug war.</li>
+        <li><strong>Visuelles Feedback</strong>: Der zuletzt ausgeführte Zug wird im Analyse-Modus **gelb**
+            hervorgehoben (Start- und Zielfeld).</li>
+        <li><strong>Clean UI</strong>: Markierungen für "mögliche Züge" oder "ausgewählte Figuren" werden im
+            Analyse-Modus automatisch ausgeblendet.</li>
+    </ul>
+
+    <h3>Technische Umsetzung</h3>
+    <ul>
+        <li><strong>Backend (Replay Logic)</strong>:
+            <ul>
+                <li>Der Server speichert die vollständige Zughistorie.</li>
+                <li>Für jeden historischen Zugriff (`getBoardAtMove`) wird ein temporäres Schachbrett erzeugt und die
+                    Züge bis zum gewünschten Index neu simuliert.</li>
+                <li>Dies garantiert 100% korrekte Zustände (inklusive Rochaderechten, En Passant etc.) ohne komplexe
+                    Rückwärts-Logik.</li>
+            </ul>
+        </li>
+        <li><strong>Frontend (Vue.js)</strong>:
+            <ul>
+                <li><strong>State Management</strong>: Trennung zwischen Live-Spiel und Analyse-Modus (`isGameOver`).
+                </li>
+                <li><strong>Highlighting</strong>: Das `ChessBoard` highlightet den `lastMove` via CSS `box-shadow` für
+                    maximale Sichtbarkeit.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2>7. Versionierung & Status</h2>
+
+    <h3>Git Repository</h3>
+    <ul>
+        <li><strong>Status</strong>: Codebasis ist versioniert und auf GitHub verfügbar.</li>
+        <li><strong>Commit</strong>: <em>"feat: overhaul game logic, UI improvements, and documentation"</em></li>
+        <li><strong>Änderungen</strong>: Datenbank entfernt, Game-Engine überarbeitet (En Passant, Checks), UI
+            Refactoring.</li>
+        <li><strong>Repository</strong>: <a
+                href="https://github.com/YannickFOM/Schachanwendung---Seminararbeit">https://github.com/YannickFOM/Schachanwendung---Seminararbeit</a>
+            (Main Branch)</li>
+    </ul>
+
 </body>
+
 </html>

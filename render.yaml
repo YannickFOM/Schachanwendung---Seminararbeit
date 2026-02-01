@@ -7,3 +7,12 @@ services:
     envVars:
       - key: PORT
         value: 8080
+
+  - type: static
+    name: chess-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: REPLACE_WITH_BACKEND_URL

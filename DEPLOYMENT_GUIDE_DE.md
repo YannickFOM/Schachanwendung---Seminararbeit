@@ -1,6 +1,6 @@
-# Anleitung zum Deployment des Schach-Backends auf Render.com
+# Anleitung zum Deployment des Schach-Projekts auf Render.com
 
-Diese Anleitung führt Sie Schritt für Schritt durch den Prozess, Ihr Spring Boot Backend im kostenlosen Tier von Render.com zu veröffentlichen.
+Diese Anleitung führt Sie Schritt für Schritt durch den Prozess, sowohl das Backend (Spring Boot) als auch das Frontend (Vue.js) auf Render.com zu veröffentlichen.
 
 ## Voraussetzungen
 
@@ -10,49 +10,53 @@ Diese Anleitung führt Sie Schritt für Schritt durch den Prozess, Ihr Spring Bo
 
 ## Schritt 1: Code auf GitHub vorbereiten
 
-Stellen Sie sicher, dass die neuesten Änderungen (insbesondere `application.properties` und `render.yaml`) in Ihr GitHub-Repository gepusht sind.
+Stellen Sie sicher, dass die neuesten Änderungen in Ihr GitHub-Repository gepusht sind. Das beinhaltet:
+- `render.yaml` (Definiert Backend & Frontend)
+- `Dockerfile` (Für das Backend)
+- Änderungen in `frontend/src/services/api.js` (Für die variable URL)
 
-## Schritt 2: Service auf Render erstellen
+## Schritt 2: Services auf Render erstellen
 
-Wir verwenden die Datei `render.yaml`, um die Konfiguration zu automatisieren.
+Wir verwenden die Datei `render.yaml` ("Blueprints"), um alles automatisch anzulegen.
 
 1.  Loggen Sie sich bei [Render.com](https://render.com/) ein.
-2.  Klicken Sie oben rechts auf **"New +"** und wählen Sie **"Blueprint"**.
-3.  Verknüpfen Sie Ihren GitHub-Account, falls noch nicht geschehen.
-4.  Wählen Sie Ihr Repository **"Schachspiel"** (oder wie Sie es genannt haben) aus.
-5.  Klicken Sie auf **"Connect"**.
-6.  Geben Sie dem Blueprint einen Namen (z.B. "Schach-Deployment") und klicken Sie auf **"Apply"**.
+2.  Gehen Sie auf **"Blueprints"** -> **"New Blueprint Instance"**.
+3.  Verknüpfen Sie Ihr Repository ("Schachspiel").
+4.  Klicken Sie auf **"Connect"**.
+5.  Render zeigt Ihnen nun zwei Services an, die erstellt werden:
+    - `chess-backend` (Web Service)
+    - `chess-frontend` (Static Site)
+6.  Klicken Sie auf **"Apply"**.
 
-Render wird nun automatisch:
-- Den Code herunterladen.
-- Das Projekt mit Maven bauen (`mvn clean package`).
-- Den Server starten.
+## Schritt 3: Backend-URL herausfinden & Frontend konfigurieren
 
-## Schritt 3: Status überprüfen
+Das Frontend muss wissen, wo das Backend läuft.
 
-Im Dashboard von Render sehen Sie nun Ihren Service `chess-backend`.
-Klicken Sie darauf, um die Logs zu sehen.
+1.  Warten Sie, bis der **Backend-Service** (`chess-backend`) erfolgreich deployed wurde (grüner Haken).
+2.  Klicken Sie auf den Backend-Service und kopieren Sie die **URL** (oben links, z.B. `https://chess-backend-xyz.onrender.com`).
+3.  Gehen Sie zurück zum Dashboard und klicken Sie auf den **Frontend-Service** (`chess-frontend`).
+4.  Gehen Sie auf den Reiter **"Environment"**.
+5.  Sie sehen dort eine Variable `VITE_API_URL` mit dem Wert `REPLACE_WITH_BACKEND_URL`.
+6.  Klicken Sie auf **"Edit"** und fügen Sie **Ihre Backend-URL** ein.
+    - **WICHTIG:** Hängen Sie `/api` hinten an!
+    - Beispiel: `https://chess-backend-xyz.onrender.com/api`
+7.  Speichern Sie ("Save Changes").
 
-- Der Prozess "Build" kann einige Minuten dauern.
-- Achten Sie auf die Meldung `Build successful`.
-- Danach startet der Service. Warten Sie auf Logs wie `Started ChessApplication in ... seconds`.
-- Sobald der Service läuft, sehen Sie oben links die URL (z.B. `https://chess-backend-xyz.onrender.com`).
+## Schritt 4: Frontend neu deployen
 
-## Schritt 4: Testen
+Nach der Änderung der Variable muss das Frontend neu gebaut werden.
 
-Öffnen Sie die URL in Ihrem Browser. Da wir keinen Root-Endpoint (`/`) definiert haben, sehen Sie vielleicht eine Fehlerseite (Whitelabel Error Page), aber das bedeutet, dass der Server läuft!
+1.  Klicken Sie im Frontend-Service oben rechts auf **"Manual Deploy"** -> **"Deploy latest commit"**.
+2.  Warten Sie, bis der Build fertig ist.
 
-Testen Sie einen API-Endpunkt, um sicherzugehen:
-`https://IHR-SERVICE-URL.onrender.com/api/games`
+## Schritt 5: Fertig!
 
-Sie sollten eine leere Liste `[]` oder JSON-Daten sehen.
-
-## Wichtige Hinweise zum Free Tier
-
-- **Spin-down**: Wenn Ihr Service 15 Minuten lang keine Anfragen erhält, geht er in den "Schlafmodus". Die nächste Anfrage kann dann 30-60 Sekunden dauern, bis der Server wieder wach ist.
-- Für Ihre Seminararbeit ist das okay, aber erwähnen Sie es bei einer Live-Demo (einmal vorher aufrufen, um ihn zu wecken).
+Klicken Sie auf die URL des Frontends (z.B. `https://chess-frontend-abc.onrender.com`).
+Das Spiel sollte nun laden und sich mit dem Backend verbinden.
 
 ## Fehlerbehebung
 
-- **Build fehlgeschlagen?** Prüfen Sie die Logs. Oft liegt es an Java-Versionen. Wir haben Java 17 in `render.yaml` eingestellt.
-- **Service startet nicht?** Prüfen Sie, ob der JAR-Dateiname im `startCommand` in `render.yaml` korrekt ist. Ich habe `target/chess-backend-1.0.0.jar` angenommen. Falls Sie den Namen in `pom.xml` geändert haben, müssen Sie ihn hier anpassen.
+- **Frontend zeigt keine Spiele?** Prüfen Sie in der Browser-Konsole (F12), ob Netzwerkfehler auftreten.
+    - Falls ja: Stimmt die `VITE_API_URL`? Haben Sie `/api` am Ende?
+- **Backend startet nicht?** Prüfen Sie die Logs. Läuft der Docker-Build durch?
+- **Spin-down**: Denken Sie daran, dass beide Services im Free Tier nach 15 Minuten Inaktivität schlafen gehen. Der erste Aufruf dauert dann etwas länger.

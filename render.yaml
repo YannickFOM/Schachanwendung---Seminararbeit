@@ -8,8 +8,9 @@ services:
       - key: PORT
         value: 8080
 
-  - type: static
-    name: chess-frontend
+  - type: web
+    name: chess-frontend-v2
+    env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist

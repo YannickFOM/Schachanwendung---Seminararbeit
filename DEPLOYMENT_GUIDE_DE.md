@@ -20,13 +20,15 @@ Stellen Sie sicher, dass die neuesten Änderungen in Ihr GitHub-Repository gepus
 Wir verwenden die Datei `render.yaml` ("Blueprints"), um alles automatisch anzulegen.
 
 1.  Loggen Sie sich bei [Render.com](https://render.com/) ein.
-2.  Gehen Sie auf **"Blueprints"** -> **"New Blueprint Instance"**.
-3.  Verknüpfen Sie Ihr Repository ("Schachspiel").
-4.  Klicken Sie auf **"Connect"**.
-5.  Render zeigt Ihnen nun zwei Services an, die erstellt werden:
+2.  Gehen Sie auf **"Blueprints"**.
+3.  Klicken Sie auf Ihr bestehendes Blueprint (z.B. "Yannicks Schachapp Deployment").
+4.  Klicken Sie auf **"Manual Sync"** (oben rechts) oder bestätigen Sie die erkannten Änderungen.
+5.  Render zeigt Ihnen nun an, dass ein **neuer Service** (`chess-frontend`) erstellt wird.
+6.  Bestätigen Sie mit **"Apply"** oder **"Sync"**.
+    Anschließend werden die Services erstellt:
     - `chess-backend` (Web Service)
     - `chess-frontend` (Static Site)
-6.  Klicken Sie auf **"Apply"**.
+7.  Klicken Sie auf **"Apply"**.
 
 ## Schritt 3: Backend-URL herausfinden & Frontend konfigurieren
 

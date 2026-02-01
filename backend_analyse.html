@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Backend Analyse: Schachspiel</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1200px; margin: 0 auto; padding: 40px; color: #333; line-height: 1.6; }
+        h1 { color: #2c3e50; border-bottom: 3px solid #e74c3c; padding-bottom: 10px; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { color: #c0392b; margin-top: 60px; font-size: 1.8em; border-left: 8px solid #c0392b; padding-left: 15px; background: #fff5f5; padding-top: 10px; padding-bottom: 10px; }
+        h3 { color: #2c3e50; margin-top: 40px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        h4 { color: #e67e22; margin-top: 25px; margin-bottom: 10px; }
+        
+        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; overflow-x: auto; font-family: Consolas, monospace; margin: 15px 0; border: 1px solid #333; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .code-comment { color: #6a9955; font-style: italic; }
+        .keyword { color: #569cd6; }
+        .string { color: #ce9178; }
+        .class-name { color: #4ec9b0; }
+        .method-name { color: #dcdcaa; }
+        .annotation { color: #dcdcaa; }
+
+        .analysis-box { background: #fff8e1; border-left: 4px solid #ffca28; padding: 15px; margin-bottom: 20px; border-radius: 0 4px 4px 0; }
+        .analysis-header { font-weight: bold; color: #f57f17; display: block; margin-bottom: 5px; }
+
+        ul { margin-top: 5px; }
+        li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>Backend Analyse & Code-Dokumentation</h1>
+    <p>Dieses Dokument bietet eine technische Tiefenanalyse des Java-Backends. Es ist nach architektonischen Schichten gegliedert.</p>
+
+    <!-- TEIL 1: CONFIG -->
+    <h2>1. Konfiguration & Einstiegspunkt</h2>
+    <p>Die Basis der Spring Boot Anwendung.</p>
+
+    <h3><code>ChessApplication.java</code></h3>
+    <div class="code-block">
+<span class="annotation">@SpringBootApplication</span>
+<span class="keyword">public class</span> <span class="class-name">ChessApplication</span> {
+    <span class="keyword">public static void</span> <span class="method-name">main</span>(String[] args) {
+        <span class="class-name">SpringApplication</span>.run(<span class="class-name">ChessApplication</span>.<span class="keyword">class</span>, args);
+    }
+}
+    </div>
+    <div class="analysis-box">
+        <span class="analysis-header">Analyse</span>
+        Die Annotation <code>@SpringBootApplication</code> ist ein "Meta-Annotations"-Paket. Sie aktiviert:
+        <ul>
+            <li><code>@Configuration</code>: Erlaubt Java-basierte Konfiguration.</li>
+            <li><code>@ComponentScan</code>: Sucht automatisch nach unseren Klassen (Service, Controller).</li>
+            <li><code>@EnableAutoConfiguration</code>: Konfiguriert Tomcat und Spring MVC automatisch.</li>
+        </ul>
+    </div>
+
+    <h3><code>config/AppConfig.java</code></h3>
+    <div class="code-block">
+<span class="annotation">@Configuration</span>
+<span class="keyword">public class</span> <span class="class-name">AppConfig</span> {
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">ObjectMapper</span> <span class="method-name">objectMapper</span>() {
+        <span class="class-name">ObjectMapper</span> mapper = <span class="keyword">new</span> <span class="class-name">ObjectMapper</span>();
+        mapper.findAndRegisterModules(); <span class="code-comment">// Wichtig für Java 8 Dates (LocalDateTime)</span>
+        <span class="keyword">return</span> mapper;
+    }
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="class-name">WebMvcConfigurer</span> <span class="method-name">corsConfigurer</span>() {
+        <span class="keyword">return new</span> <span class="class-name">WebMvcConfigurer</span>() {
+            <span class="annotation">@Override</span>
+            <span class="keyword">public void</span> <span class="method-name">addCorsMappings</span>(<span class="class-name">CorsRegistry</span> registry) {
+                registry.addMapping(<span class="string">"/**"</span>)
+                        .allowedOrigins(<span class="string">"http://localhost:5173"</span>); <span class="code-comment">// Vue.js Frontend</span>
+            }
+        };
+    }
+}
+    </div>
+    <div class="analysis-box">
+        <span class="analysis-header">Warum ist das nötig?</span>
+        1. <strong>CORS</strong>: Browser verbieten standardmäßig, dass eine Webseite auf Port 5173 Daten von einem Server auf Port 8080 lädt. Wir müssen das explizit erlauben.<br>
+        2. <strong>Jackson (ObjectMapper)</strong>: Standardmäßig kann Java keine <code>LocalDateTime</code> Objekte in sauberes JSON verwandeln. Das Modul <code>jackson-datatype-jsr310</code> löst das.
+    </div>
+
+
+    <!-- TEIL 2: DATENMODELL -->
+    <h2>2. Das Datenmodell (Model Layer)</h2>
+    <p>Hier definieren wir, was ein Schachspiel logisch ist.</p>
+
+    <h3><code>model/Game.java</code></h3>
+    <div class="code-block">
+<span class="annotation">@Data</span> <span class="code-comment">// Lombok: Generiert Getter/Setter automatisch</span>
+<span class="keyword">public class</span> <span class="class-name">Game</span> {
+    <span class="keyword">private</span> <span class="class-name">Long</span> id;
+    <span class="keyword">private</span> <span class="class-name">String</span> boardState; <span class="code-comment">// Serialisiertes JSON des Brettes</span>
+    <span class="keyword">private</span> <span class="class-name">GameStatus</span> status;
+    <span class="keyword">private</span> <span class="class-name">List</span>&lt;<span class="class-name">Move</span>&gt; moveHistory; <span class="code-comment">// Liste aller Züge</span>
+    
+    <span class="code-comment">// Zeit-Management</span>
+    <span class="keyword">private</span> <span class="class-name">Integer</span> timeLimit;
+    <span class="keyword">private</span> <span class="class-name">Integer</span> whiteTimeRemaining;
+    <span class="keyword">private</span> <span class="class-name">LocalDateTime</span> lastMoveAt;
+}
+    </div>
+
+    <h3><code>model/ChessBoard.java</code> (Kernkomponente)</h3>
+    <p>Diese Klasse enthält über 400 Zeilen Logik. Hier sind die Highlights:</p>
+
+    <h4>Die Simulation (IsLegalMove)</h4>
+    <div class="code-block">
+<span class="keyword">public boolean</span> <span class="method-name">isLegalMove</span>(<span class="class-name">Move</span> move) {
+    <span class="code-comment">// Schritt 1: Geometrie prüfen (z.B. Läufer darf nur diagonal)</span>
+    <span class="keyword">if</span> (!isValidMove(move)) <span class="keyword">return false</span>;
+
+    <span class="code-comment">// Schritt 2: Simulation auf einer Kopie ("Sandbox"-Prinzip)</span>
+    <span class="class-name">ChessBoard</span> simulation = <span class="keyword">this</span>.copy();
+    simulation.makeMove(move);
+
+    <span class="code-comment">// Schritt 3: Selbstschutz prüfen (Steht der eigene König jetzt immer noch / neu im Schach?)</span>
+    <span class="keyword">return</span> !simulation.isInCheck(<span class="keyword">this</span>.currentTurn);
+}
+    </div>
+
+    <h4>Schachmatt-Erkennung</h4>
+    <div class="code-block">
+<span class="keyword">public boolean</span> <span class="method-name">isCheckmate</span>(<span class="class-name">PieceColor</span> color) {
+    <span class="code-comment">// Voraussetzung: König muss bedroht sein</span>
+    <span class="keyword">if</span> (!isInCheck(color)) <span class="keyword">return false</span>;
+
+    <span class="code-comment">// Bruteforce-Prüfung: Gibt es irgendeinen legalen Zug, der das Schach aufhebt?</span>
+    <span class="keyword">return</span> !canAnyMoveEscapeCheck(color);
+}
+    </div>
+    <div class="analysis-box">
+        <span class="analysis-header">Performance & Algorithmus</span>
+        Die Methode <code>canAnyMoveEscapeCheck</code> probiert jede Figur auf jedes Feld. Wenn *ein einziger* Zug legal ist (d.h. <code>isLegalMove</code> liefert true), ist es kein Matt. Das ist rechenintensiv, aber bei 8x8 Feldern für moderne CPUs trivial (< 1ms).
+    </div>
+
+
+    <!-- TEIL 3: SERVICE -->
+    <h2>3. Die Geschäftslogik (Service Layer)</h2>
+    <p>Der Service verwebt das reine Datenmodell mit der Anwendungslogik (Speichern, Laden, Zeitmessung).</p>
+
+    <h3><code>service/GameService.java</code></h3>
+
+    <h4>Spielzug verarbeiten (Der Haupt-Zyklus)</h4>
+    <div class="code-block">
+<span class="keyword">public</span> <span class="class-name">Game</span> <span class="method-name">makeMove</span>(<span class="class-name">Long</span> gameId, <span class="class-name">Move</span> move) {
+    <span class="code-comment">// 1. Spiel & Zustand laden</span>
+    <span class="class-name">Game</span> game = games.get(gameId);
+    <span class="class-name">ChessBoard</span> board = deserializeBoard(game.getBoardState());
+
+    <span class="code-comment">// 2. Zeit berechnen & abziehen</span>
+    <span class="keyword">if</span> (game.getTimeLimit() != <span class="keyword">null</span>) {
+        <span class="keyword">long</span> elapsed = <span class="class-name">Duration</span>.between(game.getLastMoveAt(), <span class="class-name">LocalDateTime</span>.now()).getSeconds();
+        <span class="comment">// ... Zeit vom aktiven Spieler abziehen ...</span>
+    }
+
+    <span class="code-comment">// 3. Zug auf dem Brett ausführen</span>
+    board.makeMove(move);
+
+    <span class="code-comment">// 4. Status aktualisieren (Matt? Patt?)</span>
+    <span class="keyword">if</span> (board.isCheckmate(board.getCurrentTurn())) {
+        game.setStatus(<span class="class-name">GameStatus</span>.CHECKMATE);
+    }
+
+    <span class="code-comment">// 5. Speichern</span>
+    game.setBoardState(serializeBoard(board));
+    game.onUpdate(); <span class="code-comment">// Setzt lastMoveAt auf JETZT</span>
+    
+    <span class="keyword">return</span> game;
+}
+    </div>
+
+    <h4>Replay-Funktion (Analyse-Modus)</h4>
+    <div class="code-block">
+<span class="keyword">public</span> <span class="class-name">Map</span>&lt;<span class="class-name">String</span>, <span class="class-name">Object</span>&gt; <span class="method-name">getBoardAtMove</span>(<span class="class-name">Long</span> gameId, <span class="keyword">int</span> index) {
+    <span class="code-comment">// Wir nehmen die Historie...</span>
+    <span class="class-name">List</span>&lt;<span class="class-name">Move</span>&gt; moves = loadMoves(gameId);
+    
+    <span class="code-comment">// ...und spielen sie auf einem leeren Brett nach</span>
+    <span class="class-name">ChessBoard</span> replayBoard = <span class="keyword">new</span> <span class="class-name">ChessBoard</span>();
+    <span class="keyword">for</span> (<span class="keyword">int</span> i=0; i < index; i++) {
+        replayBoard.makeMove(moves.get(i));
+    }
+    
+    <span class="keyword">return</span> <span class="class-name">Map</span>.of(<span class="string">"boardState"</span>, serialize(replayBoard), <span class="string">"lastMove"</span>, moves.get(index-1));
+}
+    </div>
+
+
+    <!-- TEIL 4: CONTROLLER -->
+    <h2>4. Die Schnittstelle (Controller Layer)</h2>
+    <p>Die Haustür für das Frontend.</p>
+
+    <h3><code>controller/GameController.java</code></h3>
+    <div class="code-block">
+<span class="annotation">@RestController</span>
+<span class="annotation">@RequestMapping</span>(<span class="string">"/api/games"</span>)
+<span class="keyword">public class</span> <span class="class-name">GameController</span> {
+
+    <span class="annotation">@PostMapping</span>
+    <span class="keyword">public</span> <span class="class-name">ResponseEntity</span>&lt;<span class="class-name">Game</span>&gt; <span class="method-name">createGame</span>(<span class="annotation">@RequestBody</span> <span class="class-name">CreateGameRequest</span> request) {
+        <span class="code-comment">// Nimmt JSON entgegen -> Ruft Service auf -> Sendet JSON zurück</span>
+        <span class="keyword">return</span> <span class="class-name">ResponseEntity</span>.ok(gameService.createGame(...));
+    }
+
+    <span class="annotation">@PostMapping</span>(<span class="string">"/{id}/move"</span>)
+    <span class="keyword">public</span> <span class="class-name">ResponseEntity</span>&lt;?&gt; <span class="method-name">makeMove</span>(<span class="annotation">@PathVariable</span> <span class="class-name">Long</span> id, <span class="annotation">@RequestBody</span> <span class="class-name">Move</span> move) {
+        <span class="keyword">try</span> {
+            <span class="keyword">return</span> <span class="class-name">ResponseEntity</span>.ok(gameService.makeMove(id, move));
+        } <span class="keyword">catch</span> (<span class="class-name">Exception</span> e) {
+            <span class="code-comment">// Fehlerbehandlung: Wenn Zug ungültig, sende HTTP 400 Bad Request</span>
+            <span class="keyword">return</span> <span class="class-name">ResponseEntity</span>.badRequest().body(<span class="class-name">Map</span>.of(<span class="string">"error"</span>, e.getMessage()));
+        }
+    }
+}
+    </div>
+
+</body>
+</html>

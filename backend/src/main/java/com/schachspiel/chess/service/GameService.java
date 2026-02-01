@@ -9,16 +9,35 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Der GameService enthält die Geschäftslogik zur Verwaltung von Spielen.
+ * <p>
+ * Er kümmert sich um:
+ * - Erstellung und Speicherung von Spielen (In-Memory).
+ * - Ausführung von Zügen (in Zusammenspiel mit ChessBoard).
+ * - Zeitmanagement (Schachuhr).
+ * - Serialisierung/Deserialisierung von Spielzuständen für die Persistenz.
+ * </p>
+ */
 @Service
 public class GameService {
 
-    // In-memory storage
+    // In-memory storage (Map statt Datenbank für einfache lokale Ausführung)
     private final java.util.Map<Long, Game> games = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * Erstellt ein neues Schachspiel.
+     *
+     * @param whitePlayer  Name des Spielers (Weiß).
+     * @param blackPlayer  Name des Spielers (Schwarz).
+     * @param isOnlineMode Ob das Spiel im Online-Modus läuft (aktuell Platzhalter).
+     * @param timeLimit    Zeitlimit in Sekunden (null für unbegrenzt).
+     * @return Das erstellte Game-Objekt.
+     */
     public Game createGame(String whitePlayer, String blackPlayer, boolean isOnlineMode, Integer timeLimit) {
         Game game = new Game();
         game.setId(idGenerator.getAndIncrement());
@@ -55,20 +74,55 @@ public class GameService {
         return game;
     }
 
+    /**
+     * Lädt ein Spiel anhand seiner ID.
+     * 
+     * @param id Die Spiel-ID.
+     * @return Ein Optional, das das Spiel enthält (oder leer ist, wenn nicht
+     *         gefunden).
+     */
     public Optional<Game> getGame(Long id) {
         return Optional.ofNullable(games.get(id));
     }
 
+    /**
+     * Gibt alle aktiven Spiele zurück.
+     * 
+     * @return Liste aller Spiele.
+     */
     public List<Game> getAllGames() {
         return new ArrayList<>(games.values());
     }
 
+    /**
+     * Sucht alle Spiele, an denen ein bestimmter Spieler beteiligt ist.
+     * 
+     * @param playerName Der Name des Spielers (Weiß oder Schwarz).
+     * @return Liste der Spiele.
+     */
     public List<Game> getGamesByPlayer(String playerName) {
         return games.values().stream()
                 .filter(g -> playerName.equals(g.getWhitePlayer()) || playerName.equals(g.getBlackPlayer()))
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    /**
+     * Führt einen Zug aus.
+     * <p>
+     * Ablauf:
+     * 1. Lade Spiel und deserialisiere Brett.
+     * 2. Prüfe Status (Spiel läuft?).
+     * 3. Validiere Zug (inkl. Schachgebote).
+     * 4. Führe Zug aus und update Zeit.
+     * 5. Prüfe auf Spielende (Matt, Patt, Zeit).
+     * 6. Speichere neuen Zustand.
+     * </p>
+     * 
+     * @param gameId ID des Spiels.
+     * @param move   Der Zug.
+     * @return Das aktualisierte Spiel.
+     * @throws Exception Wenn der Zug ungültig ist.
+     */
     public Game makeMove(Long gameId, Move move) throws Exception {
         Game game = games.get(gameId);
         if (game == null) {
@@ -136,6 +190,14 @@ public class GameService {
         return game;
     }
 
+    /**
+     * Ermittelt alle gültigen Züge für eine Position (Hilfsfunktion für Frontend).
+     * 
+     * @param gameId Spiel-ID.
+     * @param row    Zeile.
+     * @param col    Spalte.
+     * @return Liste der möglichen Züge.
+     */
     public List<Move> getValidMoves(Long gameId, int row, int col) {
         Game game = games.get(gameId);
         if (game == null)
@@ -161,6 +223,14 @@ public class GameService {
         }
     }
 
+    /**
+     * Stellt einen vergangenen Spielzustand wieder her (Time-Travel).
+     * 
+     * @param gameId    Spiel-ID.
+     * @param moveIndex Nummer des Zuges.
+     * @return Map mit Brettzustand und letztem Zug.
+     * @throws Exception Bei ungültigem Index.
+     */
     public java.util.Map<String, Object> getBoardAtMove(Long gameId, int moveIndex) throws Exception {
         Game game = games.get(gameId);
         if (game == null) {

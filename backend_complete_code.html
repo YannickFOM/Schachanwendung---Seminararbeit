@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Schach Backend - Vollständiger Quellcode</title>
+    <style>
+        @media print {
+            body {
+                font-size: 10pt;
+                color: #000;
+            }
+
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                border: 1px solid #ccc;
+                page-break-inside: avoid;
+            }
+
+            h2 {
+                page-break-before: always;
+                border-bottom: 2px solid #000;
+            }
+
+            .toc {
+                display: none;
+            }
+
+            /* Hide TOC in print if desired, or keep */
+            a {
+                text-decoration: none;
+                color: #000;
+            }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fdfdfd;
+        }
+
+        h1 {
+            border-bottom: 4px solid #2c3e50;
+            padding-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            margin-top: 50px;
+            background: #f0f0f0;
+            padding: 10px;
+            border-left: 5px solid #2980b9;
+            color: #2980b9;
+        }
+
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: Consolas, monospace;
+            tab-size: 4;
+        }
+
+        .toc {
+            background: #eef;
+            padding: 20px;
+            border: 1px solid #ccd;
+            border-radius: 5px;
+            margin-bottom: 40px;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .toc li {
+            margin-bottom: 5px;
+        }
+
+        .toc a {
+            text-decoration: none;
+            color: #2980b9;
+            font-weight: bold;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        /* Syntax highlighting mock-up */
+        .keyword {
+            color: #569cd6;
+            font-weight: bold;
+        }
+
+        .comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        .string {
+            color: #ce9178;
+        }
+
+        .annotation {
+            color: #dcdcaa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Schachspiel Backend - Quellcode</h1>
+    <p>Generiert für Seminararbeit. Stand: 25.01.2026. Enthält alle 12 Java-Dateien.</p>
+
+    <div class="toc">
+        <h3>Inhaltsverzeichnis</h3>
+        <ul>
+            <li><a href="#ChessApplication">1. ChessApplication.java</a> (Main)</li>
+            <li><a href="#AppConfig">2. AppConfig.java</a> (Konfiguration)</li>
+            <li><a href="#GameController">3. GameController.java</a> (API)</li>
+            <li><a href="#GameService">4. GameService.java</a> (Logik)</li>
+            <li><a href="#ChessBoard">5. ChessBoard.java</a> (Schach-Logik)</li>
+            <li><a href="#Game">6. Game.java</a> (Datenmodell)</li>
+            <li><a href="#Move">7. Move.java</a> (Datenmodell)</li>
+            <li><a href="#Piece">8. Piece.java</a> (Figur)</li>
+            <li><a href="#Position">9. Position.java</a> (Koordinate)</li>
+            <li><a href="#GameStatus">10. GameStatus.java</a> (Enum)</li>
+            <li><a href="#PieceType">11. PieceType.java</a> (Enum)</li>
+            <li><a href="#PieceColor">12. PieceColor.java</a> (Enum)</li>
+        </ul>
+    </div>
+
+    <h2 id="ChessApplication">1. ChessApplication.java</h2>
+    <pre>package com.schachspiel.chess;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+/**
+ * Der Einstiegspunkt der Schach-Anwendung.
+ * &lt;p&gt;
+ * Diese Klasse startet den Spring Boot Server, der die REST-API bereitstellt
+ * und die Spiel-Logik hostet.
+ * &lt;/p&gt;
+ */
+@SpringBootApplication
+public class ChessApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ChessApplication.class, args);
+    }
+}</pre>
+
+    <h2 id="AppConfig">2. AppConfig.java</h2>
+    <pre>package com.schachspiel.chess.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+/**
+ * Konfiguration der Spring Boot Anwendung.
+ * &lt;p&gt;
+ * Hier werden globale Einstellungen wie JSON-Parsing (Jackson) und
+ * CORS-Richtlinien (Cross-Origin Resource Sharing) definiert.
+ * &lt;/p&gt;
+ */
+@Configuration
+public class AppConfig {
+
+    /**
+     * Konfiguriert den JSON-Mapper.
+     * &lt;p&gt;
+     * Aktiviert die Unterstützung für Java 8 'LocalDateTime' (JSR310) und
+     * verhindert Fehler bei unbekannten JSON-Eigenschaften.
+     * &lt;/p&gt;
+     * 
+     * @return Ein konfigurierter ObjectMapper.
+     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.findAndRegisterModules();
+        mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return mapper;
+    }
+
+    /**
+     * Konfiguriert CORS-Regeln, damit das Frontend auf die API zugreifen darf.
+     * &lt;p&gt;
+     * Erlaubt Anfragen von localhost:5173 (Vue.js) und localhost:3000.
+     * &lt;/p&gt;
+     * 
+     * @return Der WebMvcConfigurer für CORS.
+     */
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:5173", "http://localhost:3000")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true);
+            }
+        };
+    }
+}</pre>
+
+    <h2 id="GameController">3. GameController.java</h2>
+    <pre>package com.schachspiel.chess.controller;
+
+import com.schachspiel.chess.model.Game;
+import com.schachspiel.chess.model.Move;
+import com.schachspiel.chess.service.GameService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * REST-Controller für die Schach-API.
+ * &lt;p&gt;
+ * Stellt HTTP-Endpunkte bereit, über die Frontend und Backend kommunizieren.
+ * &lt;/p&gt;
+ */
+@RestController
+@RequestMapping("/api/games")
+public class GameController {
+
+    @Autowired
+    private GameService gameService;
+
+    /**
+     * Erstellt ein neues Spiel.
+     *
+     * @param request Map mit 'whitePlayer', 'blackPlayer', 'timeLimit' etc.
+     * @return Das neu erstellte Spiel als JSON.
+     */
+    @PostMapping
+    public ResponseEntity&lt;Game&gt; createGame(@RequestBody Map&lt;String, Object&gt; request) {
+        System.out.println("Received createGame request: " + request);
+        try {
+            String whitePlayer = (String) request.get("whitePlayer");
+            String blackPlayer = (String) request.get("blackPlayer");
+            boolean isOnlineMode = (boolean) request.getOrDefault("isOnlineMode", false);
+            Integer timeLimit = request.containsKey("timeLimit") ? (Integer) request.get("timeLimit") : null;
+
+            Game game = gameService.createGame(whitePlayer, blackPlayer, isOnlineMode, timeLimit);
+            System.out.println("Created game: " + game);
+            return ResponseEntity.ok(game);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Ruft eine Liste aller aktiven Spiele ab.
+     * 
+     * @return Liste von Game-Objekten.
+     */
+    @GetMapping
+    public ResponseEntity&lt;List&lt;Game&gt;&gt; getAllGames() {
+        return ResponseEntity.ok(gameService.getAllGames());
+    }
+
+    /**
+     * Lädt den aktuellen Spielstand.
+     *
+     * @param id Die Spiel-ID.
+     * @return Das Spiel-Objekt (inkl. Brettzustand und Zeiten).
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity&lt;Game&gt; getGame(@PathVariable Long id) {
+        return gameService.getGame(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Sucht Spiele eines bestimmten Spielers.
+     * 
+     * @param playerName Name des Spielers.
+     * @return Liste der gefundenen Spiele.
+     */
+    @GetMapping("/player/{playerName}")
+    public ResponseEntity&lt;List&lt;Game&gt;&gt; getPlayerGames(@PathVariable String playerName) {
+        return ResponseEntity.ok(gameService.getGamesByPlayer(playerName));
+    }
+
+    /**
+     * Führt einen Zug aus.
+     *
+     * @param id   Die ID des Spiels aus der URL.
+     * @param move Der Zug (Start/Ziel) als JSON-Body.
+     * @return Das aktualisierte SpielOder eine Fehlermeldung (HTTP 400), wenn der
+     *         Zug ungültig ist.
+     */
+    @PostMapping("/{id}/move")
+    public ResponseEntity&lt;?&gt; makeMove(@PathVariable Long id, @RequestBody Move move) {
+        System.out.println("Received move request for game " + id + ": " + move);
+        try {
+            Game game = gameService.makeMove(id, move);
+            System.out.println("Move successful, new state: " + game.getBoardState());
+            return ResponseEntity.ok(game);
+        } catch (Exception e) {
+            System.out.println("Move failed: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Berechnet alle gültigen Züge für eine Figur auf dem Feld.
+     * Hilfreich für das Highlighting im Frontend.
+     *
+     * @param id  Spiel-ID.
+     * @param row Zeile der Figur.
+     * @param col Spalte der Figur.
+     * @return Liste möglicher Züge (Moves).
+     */
+    @GetMapping("/{id}/valid-moves")
+    public ResponseEntity&lt;List&lt;Move&gt;&gt; getValidMoves(
+            @PathVariable Long id,
+            @RequestParam int row,
+            @RequestParam int col) {
+        return ResponseEntity.ok(gameService.getValidMoves(id, row, col));
+    }
+
+    /**
+     * Replay-Funktion: Liest den Brettzustand zu einem historischen Zeitpunkt.
+     *
+     * @param id   Spiel-ID.
+     * @param move Die Nummer des Zugs (Index).
+     * @return JSON mit 'boardState' und 'lastMove'.
+     */
+    @GetMapping("/{id}/board")
+    public ResponseEntity&lt;?&gt; getBoardAtMove(
+            @PathVariable Long id,
+            @RequestParam int move) {
+        try {
+            return ResponseEntity.ok(gameService.getBoardAtMove(id, move));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+}</pre>
+
+    <h2 id="GameService">4. GameService.java</h2>
+    <pre>package com.schachspiel.chess.service;
+
+import com.schachspiel.chess.model.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Der GameService enthält die Geschäftslogik zur Verwaltung von Spielen.
+ * &lt;p&gt;
+ * Er kümmert sich um:
+ * - Erstellung und Speicherung von Spielen (In-Memory).
+ * - Ausführung von Zügen (in Zusammenspiel mit ChessBoard).
+ * - Zeitmanagement (Schachuhr).
+ * - Serialisierung/Deserialisierung von Spielzuständen für die Persistenz.
+ * &lt;/p&gt;
+ */
+@Service
+public class GameService {
+
+    // In-memory storage (Map statt Datenbank für einfache lokale Ausführung)
+    private final java.util.Map&lt;Long, Game&gt; games = new java.util.concurrent.ConcurrentHashMap&lt;&gt;();
+    private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    /**
+     * Erstellt ein neues Schachspiel.
+     *
+     * @param whitePlayer  Name des Spielers (Weiß).
+     * @param blackPlayer  Name des Spielers (Schwarz).
+     * @param isOnlineMode Ob das Spiel im Online-Modus läuft (aktuell Platzhalter).
+     * @param timeLimit    Zeitlimit in Sekunden (null für unbegrenzt).
+     * @return Das erstellte Game-Objekt.
+     */
+    public Game createGame(String whitePlayer, String blackPlayer, boolean isOnlineMode, Integer timeLimit) {
+        Game game = new Game();
+        game.setId(idGenerator.getAndIncrement());
+        game.setWhitePlayer(whitePlayer);
+        game.setBlackPlayer(blackPlayer);
+        game.setCurrentTurn(PieceColor.WHITE);
+        game.setStatus(GameStatus.IN_PROGRESS);
+        game.setOnlineMode(isOnlineMode);
+
+        // Parse time limit (default to null/unlimited if not provided or 0)
+        // Only if &gt; 0 we consider it a limit
+        Integer timeLimitVal = null; // Default unlimited
+
+        game.onCreate();
+
+        game.setTimeLimit(timeLimit);
+        if (timeLimit != null && timeLimit &gt; 0) {
+            game.setWhiteTimeRemaining(timeLimit);
+            game.setBlackTimeRemaining(timeLimit);
+        }
+
+        ChessBoard board = new ChessBoard();
+        game.setBoardState(serializeBoard(board));
+        game.setMoveHistory("[]");
+
+        games.put(game.getId(), game);
+        return game;
+    }
+
+    /**
+     * Lädt ein Spiel anhand seiner ID.
+     * 
+     * @param id Die Spiel-ID.
+     * @return Ein Optional, das das Spiel enthält (oder leer ist, wenn nicht
+     *         gefunden).
+     */
+    public Optional&lt;Game&gt; getGame(Long id) {
+        return Optional.ofNullable(games.get(id));
+    }
+
+    /**
+     * Gibt alle aktiven Spiele zurück.
+     * 
+     * @return Liste aller Spiele.
+     */
+    public List&lt;Game&gt; getAllGames() {
+        return new ArrayList&lt;&gt;(games.values());
+    }
+
+    /**
+     * Sucht alle Spiele, an denen ein bestimmter Spieler beteiligt ist.
+     * 
+     * @param playerName Der Name des Spielers (Weiß oder Schwarz).
+     * @return Liste der Spiele.
+     */
+    public List&lt;Game&gt; getGamesByPlayer(String playerName) {
+        return games.values().stream()
+                .filter(g -&gt; playerName.equals(g.getWhitePlayer()) || playerName.equals(g.getBlackPlayer()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Führt einen Zug aus.
+     * &lt;p&gt;
+     * Ablauf:
+     * 1. Lade Spiel und deserialisiere Brett.
+     * 2. Prüfe Status (Spiel läuft?).
+     * 3. Validiere Zug (inkl. Schachgebote).
+     * 4. Führe Zug aus und update Zeit.
+     * 5. Prüfe auf Spielende (Matt, Patt, Zeit).
+     * 6. Speichere neuen Zustand.
+     * &lt;/p&gt;
+     * 
+     * @param gameId ID des Spiels.
+     * @param move   Der Zug.
+     * @return Das aktualisierte Spiel.
+     * @throws Exception Wenn der Zug ungültig ist.
+     */
+    public Game makeMove(Long gameId, Move move) throws Exception {
+        Game game = games.get(gameId);
+        if (game == null) {
+            throw new Exception("Game not found");
+        }
+
+        // Ensure it's the correct turn
+        if (game.getStatus() != GameStatus.IN_PROGRESS) {
+            throw new Exception("Game is over");
+        }
+
+        ChessBoard board = deserializeBoard(game.getBoardState());
+
+        // Use IS LEGAL MOVE (checks king safety) instead of just valid move
+        if (!board.isLegalMove(move)) {
+            throw new Exception("Invalid move or King is in check");
+        }
+
+        board.makeMove(move);
+
+        game.setBoardState(serializeBoard(board));
+
+        // Time Calculation
+        if (game.getTimeLimit() != null && game.getTimeLimit() &gt; 0) {
+            long elapsedSeconds = java.time.Duration.between(game.getLastMoveAt(), java.time.LocalDateTime.now())
+                    .getSeconds();
+
+            if (game.getCurrentTurn() == PieceColor.WHITE) {
+                int remaining = (int) Math.max(0, game.getWhiteTimeRemaining() - elapsedSeconds);
+                game.setWhiteTimeRemaining(remaining);
+                if (remaining == 0) {
+                    game.setStatus(GameStatus.VICTORY_BY_TIME);
+                    game.setWinner("BLACK");
+                }
+            } else {
+                int remaining = (int) Math.max(0, game.getBlackTimeRemaining() - elapsedSeconds);
+                game.setBlackTimeRemaining(remaining);
+                if (remaining == 0) {
+                    game.setStatus(GameStatus.VICTORY_BY_TIME);
+                    game.setWinner("WHITE");
+                }
+            }
+        }
+
+        game.setCurrentTurn(board.getCurrentTurn());
+        game.setMoveHistory(addMoveToHistory(game.getMoveHistory(), move));
+        game.onUpdate();
+
+        // Check for checkmate or stalemate
+        boolean inCheck = board.isInCheck(board.getCurrentTurn());
+        game.setCheck(inCheck);
+
+        if (board.isCheckmate(board.getCurrentTurn())) {
+            game.setStatus(GameStatus.CHECKMATE);
+            game.setWinner(board.getCurrentTurn() == PieceColor.WHITE ? "BLACK" : "WHITE");
+        } else if (board.isStalemate(board.getCurrentTurn())) {
+            game.setStatus(GameStatus.STALEMATE);
+        }
+
+        return game;
+    }
+
+    /**
+     * Ermittelt alle gültigen Züge für eine Position (Hilfsfunktion für Frontend).
+     * 
+     * @param gameId Spiel-ID.
+     * @param row    Zeile.
+     * @param col    Spalte.
+     * @return Liste der möglichen Züge.
+     */
+    public List&lt;Move&gt; getValidMoves(Long gameId, int row, int col) {
+        Game game = games.get(gameId);
+        if (game == null)
+            return new ArrayList&lt;&gt;();
+
+        ChessBoard board = deserializeBoard(game.getBoardState());
+        return board.getValidMoves(new Position(row, col));
+    }
+
+    private String serializeBoard(ChessBoard board) {
+        try {
+            return objectMapper.writeValueAsString(board);
+        } catch (JsonProcessingException e) {
+            return "{}";
+        }
+    }
+
+    private ChessBoard deserializeBoard(String boardState) {
+        try {
+            return objectMapper.readValue(boardState, ChessBoard.class);
+        } catch (JsonProcessingException e) {
+            return new ChessBoard();
+        }
+    }
+
+    /**
+     * Stellt einen vergangenen Spielzustand wieder her (Time-Travel).
+     * 
+     * @param gameId    Spiel-ID.
+     * @param moveIndex Nummer des Zuges.
+     * @return Map mit Brettzustand und letztem Zug.
+     * @throws Exception Bei ungültigem Index.
+     */
+    public java.util.Map&lt;String, Object&gt; getBoardAtMove(Long gameId, int moveIndex) throws Exception {
+        Game game = games.get(gameId);
+        if (game == null) {
+            throw new Exception("Game not found");
+        }
+
+        List&lt;Move&gt; moves = new ArrayList&lt;&gt;();
+        try {
+            moves = objectMapper.readValue(game.getMoveHistory(),
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, Move.class));
+        } catch (JsonProcessingException e) {
+            // Empty history
+        }
+
+        if (moveIndex &lt; 0 || moveIndex &gt; moves.size()) {
+            throw new Exception("Invalid move index");
+        }
+
+        ChessBoard replayBoard = new ChessBoard();
+        // Replay moves
+        for (int i = 0; i &lt; moveIndex; i++) {
+            replayBoard.makeMove(moves.get(i));
+        }
+
+        Move lastMove = null;
+        if (moveIndex &gt; 0) {
+            lastMove = moves.get(moveIndex - 1);
+        }
+
+        java.util.Map&lt;String, Object&gt; result = new java.util.HashMap&lt;&gt;();
+        result.put("boardState", serializeBoard(replayBoard));
+        result.put("lastMove", lastMove);
+
+        return result;
+    }
+
+    private String addMoveToHistory(String moveHistory, Move move) {
+        try {
+            List&lt;Move&gt; moves = objectMapper.readValue(moveHistory,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, Move.class));
+            moves.add(move);
+            return objectMapper.writeValueAsString(moves);
+        } catch (JsonProcessingException e) {
+            return "[]";
+        }
+    }
+}</pre>
+
+    <h2 id="ChessBoard">5. ChessBoard.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+import lombok.Data;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Repräsentiert das Schachbrett und beinhaltet die gesamte Spielregellogik.
+ * &lt;p&gt;
+ * Diese Klasse verwaltet das 8x8 Spielfeld, die Positionen der Figuren und
+ * überprüft
+ * die Gültigkeit von Zügen gemäß den offiziellen FIDE-Schachregeln.
+ * Sie implementiert Logik für Spezialzüge wie Rochade und En Passant sowie
+ * die Erkennung von Schach, Matt und Patt.
+ * &lt;/p&gt;
+ */
+@Data
+public class ChessBoard {
+    /** Das 8x8 Spielfeld. Indexierung: [0][0] = A8, [7][7] = H1. */
+    private Piece[][] board;
+
+    /** Die Farbe des Spielers, der aktuell am Zug ist. */
+    private PieceColor currentTurn;
+
+    /** Historie aller getätigten Züge (für Validierung und Analyse). */
+    private List&lt;Move&gt; moveHistory;
+
+    /**
+     * Speichert das Ziel-Feld für einen En Passant Schlag, falls verfügbar.
+     * Wenn ein Bauer einen Doppelschritt macht, wird das übersprungene Feld hier
+     * markiert.
+     */
+    private Position enPassantTarget;
+
+    /**
+     * Erstellt ein neues Schachbrett in der Standard-Startaufstellung.
+     */
+    public ChessBoard() {
+        this.board = new Piece[8][8];
+        this.currentTurn = PieceColor.WHITE;
+        this.moveHistory = new ArrayList&lt;&gt;();
+        initializeBoard();
+    }
+
+    /**
+     * Copy-Konstruktor zur Erstellung einer tiefen Kopie (Deep Copy) des Brettes.
+     * &lt;p&gt;
+     * Dieser Konstruktor wird hauptsächlich für die Zugsimulation verwendet, um zu
+     * prüfen,
+     * ob ein Zug den eigenen König im Schach zurücklässt, ohne das echte Brett zu
+     * verändern.
+     * &lt;/p&gt;
+     *
+     * @param other Das zu kopierende Schachbrett.
+     */
+    public ChessBoard(ChessBoard other) {
+        this.board = new Piece[8][8];
+        for (int i = 0; i &lt; 8; i++) {
+            for (int j = 0; j &lt; 8; j++) {
+                if (other.board[i][j] != null) {
+                    Piece p = other.board[i][j];
+                    this.board[i][j] = new Piece(p.getType(), p.getColor());
+                    this.board[i][j].setHasMoved(p.isHasMoved());
+                }
+            }
+        }
+        this.currentTurn = other.currentTurn;
+        this.moveHistory = new ArrayList&lt;&gt;(other.moveHistory);
+        this.enPassantTarget = other.enPassantTarget;
+    }
+
+    /**
+     * Erstellt eine exakte Kopie dieses Brettes.
+     * 
+     * @return Eine neue Instanz von ChessBoard mit identischem Zustand.
+     */
+    public ChessBoard copy() {
+        return new ChessBoard(this);
+    }
+
+    private void initializeBoard() {
+        // Initialize pawns
+        for (int i = 0; i &lt; 8; i++) {
+            board[1][i] = new Piece(PieceType.PAWN, PieceColor.WHITE);
+            board[6][i] = new Piece(PieceType.PAWN, PieceColor.BLACK);
+        }
+
+        // Initialize rooks
+        board[0][0] = new Piece(PieceType.ROOK, PieceColor.WHITE);
+        board[0][7] = new Piece(PieceType.ROOK, PieceColor.WHITE);
+        board[7][0] = new Piece(PieceType.ROOK, PieceColor.BLACK);
+        board[7][7] = new Piece(PieceType.ROOK, PieceColor.BLACK);
+
+        // Initialize knights
+        board[0][1] = new Piece(PieceType.KNIGHT, PieceColor.WHITE);
+        board[0][6] = new Piece(PieceType.KNIGHT, PieceColor.WHITE);
+        board[7][1] = new Piece(PieceType.KNIGHT, PieceColor.BLACK);
+        board[7][6] = new Piece(PieceType.KNIGHT, PieceColor.BLACK);
+
+        // Initialize bishops
+        board[0][2] = new Piece(PieceType.BISHOP, PieceColor.WHITE);
+        board[0][5] = new Piece(PieceType.BISHOP, PieceColor.WHITE);
+        board[7][2] = new Piece(PieceType.BISHOP, PieceColor.BLACK);
+        board[7][5] = new Piece(PieceType.BISHOP, PieceColor.BLACK);
+
+        // Initialize queens
+        board[0][3] = new Piece(PieceType.QUEEN, PieceColor.WHITE);
+        board[7][3] = new Piece(PieceType.QUEEN, PieceColor.BLACK);
+
+        // Initialize kings
+        board[0][4] = new Piece(PieceType.KING, PieceColor.WHITE);
+        board[7][4] = new Piece(PieceType.KING, PieceColor.BLACK);
+    }
+
+    public Piece getPieceAt(Position position) {
+        if (!position.isValid()) {
+            return null;
+        }
+        return board[position.getRow()][position.getCol()];
+    }
+
+    public void setPieceAt(Position position, Piece piece) {
+        if (position.isValid()) {
+            board[position.getRow()][position.getCol()] = piece;
+        }
+    }
+
+    /**
+     * Prüft, ob ein Zug nach den Schachregeln legal ist.
+     * &lt;p&gt;
+     * Ein Zug ist legal, wenn:
+     * 1. Er den geometrischen Bewegungsregeln der Figur entspricht (`isValidMove`).
+     * 2. Er den eigenen König nicht im Schach zurücklässt (Selbstschach-Verbot).
+     * &lt;/p&gt;
+     *
+     * @param move Der zu prüfende Zug.
+     * @return true, wenn der Zug erlaubt ist, sonst false.
+     */
+    public boolean isLegalMove(Move move) {
+        // 1. Check basic geometric rules
+        if (!isValidMove(move)) {
+            return false;
+        }
+
+        // 2. Simulate move to check if it leaves king in check
+        ChessBoard simulation = this.copy();
+        simulation.makeMove(move); // This now executes the move on the copy
+
+        // 3. Make sure the current player's king is NOT in check after the move
+        // Note: makeMove switches the turn, so we check "isInCheck" for the *previous*
+        // turn color (who just moved)
+        return !simulation.isInCheck(this.currentTurn);
+    }
+
+    public List&lt;Move&gt; getValidMoves(Position from) {
+        List&lt;Move&gt; validMoves = new ArrayList&lt;&gt;();
+        Piece piece = getPieceAt(from);
+
+        if (piece == null || piece.getColor() != currentTurn) {
+            return validMoves;
+        }
+
+        for (int row = 0; row &lt; 8; row++) {
+            for (int col = 0; col &lt; 8; col++) {
+                Position to = new Position(row, col);
+                Move move = new Move();
+                move.setFrom(from);
+                move.setTo(to);
+                move.setPiece(piece);
+
+                if (isLegalMove(move)) {
+                    validMoves.add(move);
+                }
+            }
+        }
+        return validMoves;
+    }
+
+    /**
+     * Prüft die rein geometrische Gültigkeit eines Zuges für eine Figur.
+     * &lt;p&gt;
+     * Diese Methode prüft NICHT auf Schachgebote, sondern nur:
+     * - Sind Start- und Zielkoordinaten auf dem Brett?
+     * - Ist das Bewegunsmuster für den Figurentyp korrekt (z.B. Läufer diagonal)?
+     * - Ist der Pfad frei (für Figuren, die nicht springen können)?
+     * &lt;/p&gt;
+     *
+     * @param move Der Zug.
+     * @return true, wenn das Bewegungsmuster korrekt ist.
+     */
+    public boolean isValidMove(Move move) {
+        Position from = move.getFrom();
+        Position to = move.getTo();
+        Piece piece = getPieceAt(from);
+
+        if (piece == null || piece.getColor() != currentTurn) {
+            return false;
+        }
+
+        if (!to.isValid()) {
+            return false;
+        }
+
+        if (from.equals(to)) {
+            return false;
+        }
+
+        Piece targetPiece = getPieceAt(to);
+        if (targetPiece != null && targetPiece.getColor() == piece.getColor()) {
+            return false;
+        }
+
+        return switch (piece.getType()) {
+            case PAWN -&gt; isValidPawnMove(from, to, piece);
+            case ROOK -&gt; isValidRookMove(from, to);
+            case KNIGHT -&gt; isValidKnightMove(from, to);
+            case BISHOP -&gt; isValidBishopMove(from, to);
+            case QUEEN -&gt; isValidQueenMove(from, to);
+            case KING -&gt; isValidKingMove(from, to, piece);
+        };
+    }
+
+    private boolean isValidPawnMove(Position from, Position to, Piece piece) {
+        int direction = piece.getColor() == PieceColor.WHITE ? 1 : -1;
+        int startRow = piece.getColor() == PieceColor.WHITE ? 1 : 6;
+
+        int rowDiff = to.getRow() - from.getRow();
+        int colDiff = Math.abs(to.getCol() - from.getCol());
+
+        // Forward move
+        if (colDiff == 0) {
+            if (rowDiff == direction && getPieceAt(to) == null) {
+                return true;
+            }
+            // Initial two-square move
+            if (from.getRow() == startRow && rowDiff == 2 * direction) {
+                Position intermediate = new Position(from.getRow() + direction, from.getCol());
+                return getPieceAt(intermediate) == null && getPieceAt(to) == null;
+            }
+        }
+
+        // Capture move
+        if (colDiff == 1 && rowDiff == direction) {
+            Piece target = getPieceAt(to);
+            if (target != null && target.getColor() != piece.getColor()) {
+                return true;
+            }
+            // En passant
+            if (enPassantTarget != null && to.equals(enPassantTarget)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isValidRookMove(Position from, Position to) {
+        if (from.getRow() != to.getRow() && from.getCol() != to.getCol()) {
+            return false;
+        }
+        return isPathClear(from, to);
+    }
+
+    private boolean isValidKnightMove(Position from, Position to) {
+        int rowDiff = Math.abs(to.getRow() - from.getRow());
+        int colDiff = Math.abs(to.getCol() - from.getCol());
+        return (rowDiff == 2 && colDiff == 1) || (rowDiff == 1 && colDiff == 2);
+    }
+
+    private boolean isValidBishopMove(Position from, Position to) {
+        int rowDiff = Math.abs(to.getRow() - from.getRow());
+        int colDiff = Math.abs(to.getCol() - from.getCol());
+        if (rowDiff != colDiff) {
+            return false;
+        }
+        return isPathClear(from, to);
+    }
+
+    private boolean isValidQueenMove(Position from, Position to) {
+        return isValidRookMove(from, to) || isValidBishopMove(from, to);
+    }
+
+    private boolean isValidKingMove(Position from, Position to, Piece piece) {
+        int rowDiff = Math.abs(to.getRow() - from.getRow());
+        int colDiff = Math.abs(to.getCol() - from.getCol());
+
+        // Normal king move
+        if (rowDiff &lt;= 1 && colDiff &lt;= 1) {
+            return true;
+        }
+
+        // Castling
+        if (!piece.isHasMoved() && rowDiff == 0 && colDiff == 2) {
+            return canCastle(from, to);
+        }
+
+        return false;
+    }
+
+    private boolean isPathClear(Position from, Position to) {
+        int rowStep = Integer.compare(to.getRow(), from.getRow());
+        int colStep = Integer.compare(to.getCol(), from.getCol());
+
+        int currentRow = from.getRow() + rowStep;
+        int currentCol = from.getCol() + colStep;
+
+        while (currentRow != to.getRow() || currentCol != to.getCol()) {
+            if (board[currentRow][currentCol] != null) {
+                return false;
+            }
+            currentRow += rowStep;
+            currentCol += colStep;
+        }
+
+        return true;
+    }
+
+    private boolean canCastle(Position from, Position to) {
+        int rookCol = to.getCol() &gt; from.getCol() ? 7 : 0;
+        Piece rook = board[from.getRow()][rookCol];
+
+        if (rook == null || rook.getType() != PieceType.ROOK || rook.isHasMoved()) {
+            return false;
+        }
+
+        // Check if path is clear
+        if (!isPathClear(from, new Position(from.getRow(), rookCol))) {
+            return false;
+        }
+
+        // Cannot castle out of check
+        if (isInCheck(currentTurn)) {
+            return false;
+        }
+
+        // Check "through check" - the square the king crosses
+        Position crossedSquare = new Position(from.getRow(), (from.getCol() + to.getCol()) / 2);
+        return !isSquareAttacked(crossedSquare, currentTurn == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE);
+    }
+
+    /**
+     * Führt einen Zug auf dem Brett aus und aktualisiert den Spielzustand.
+     * &lt;p&gt;
+     * Diese Methode:
+     * - Bewegt die Figur.
+     * - Entfernt geschlagene Figuren (inkl. En Passant).
+     * - Führt Bauernumwandlung (Promotion) durch.
+     * - Bewegt den Turm bei einer Rochade.
+     * - Aktualisiert die Zughistorie und wechselt den aktiven Spieler.
+     * &lt;/p&gt;
+     *
+     * @param move Der auszuführende Zug.
+     */
+    public void makeMove(Move move) {
+        Position from = move.getFrom();
+        Position to = move.getTo();
+        Piece piece = getPieceAt(from);
+
+        if (piece == null) {
+            return;
+        }
+
+        move.setPiece(piece);
+        move.setCapturedPiece(getPieceAt(to));
+
+        // Auto-detect En Passant
+        boolean isEnPassantMove = false;
+        if (piece.getType() == PieceType.PAWN &&
+                Math.abs(to.getCol() - from.getCol()) == 1 && // Diagonal
+                getPieceAt(to) == null && // Empty target
+                enPassantTarget != null && to.equals(enPassantTarget)) { // Matches EP target
+
+            isEnPassantMove = true;
+            move.setEnPassant(true);
+        }
+
+        // Handle En Passant Execution
+        if (isEnPassantMove) {
+            int captureRow = piece.getColor() == PieceColor.WHITE ? to.getRow() - 1 : to.getRow() + 1;
+            board[captureRow][to.getCol()] = null; // Remove captured pawn
+        }
+
+        // Reset EP target for next turn (unless this move creates one)
+        Position nextEnPassantTarget = null;
+
+        if (piece.getType() == PieceType.PAWN) {
+            int rowDiff = Math.abs(to.getRow() - from.getRow());
+            if (rowDiff == 2) {
+                // Set metadata for next turn
+                nextEnPassantTarget = new Position((from.getRow() + to.getRow()) / 2, from.getCol());
+            }
+
+            // Promotion
+            if ((to.getRow() == 7 && piece.getColor() == PieceColor.WHITE) ||
+                    (to.getRow() == 0 && piece.getColor() == PieceColor.BLACK)) {
+                PieceType promo = move.getPromotionPiece() != null ? move.getPromotionPiece() : PieceType.QUEEN;
+                if (promo == PieceType.KING || promo == PieceType.PAWN) {
+                    promo = PieceType.QUEEN;
+                }
+                piece.setType(promo);
+            }
+        }
+        enPassantTarget = nextEnPassantTarget;
+
+        // Handle castling
+        if (piece.getType() == PieceType.KING && Math.abs(to.getCol() - from.getCol()) == 2) {
+            move.setCastling(true);
+            int rookFromCol = to.getCol() &gt; from.getCol() ? 7 : 0;
+            int rookToCol = to.getCol() &gt; from.getCol() ? to.getCol() - 1 : to.getCol() + 1;
+            Piece rook = board[from.getRow()][rookFromCol];
+            board[from.getRow()][rookToCol] = rook;
+            board[from.getRow()][rookFromCol] = null;
+            if (rook != null)
+                rook.setHasMoved(true);
+        }
+
+        // Move the piece
+        setPieceAt(to, piece);
+        setPieceAt(from, null);
+        piece.setHasMoved(true);
+
+        // Add to history and switch turn
+        moveHistory.add(move);
+        currentTurn = currentTurn == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+    }
+
+    public boolean isInCheck(PieceColor color) {
+        Position kingPosition = findKing(color);
+        if (kingPosition == null) {
+            return false;
+        }
+
+        PieceColor attackerColor = color == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+        return isSquareAttacked(kingPosition, attackerColor);
+    }
+
+    public boolean isCheckmate(PieceColor color) {
+        if (!isInCheck(color)) {
+            return false;
+        }
+        // If in check, check if any move can relieve it
+        return !canAnyMoveEscapeCheck(color);
+    }
+
+    public boolean isStalemate(PieceColor color) {
+        if (isInCheck(color)) {
+            return false;
+        }
+        // If not in check, but no valid moves
+        return !canAnyMoveEscapeCheck(color);
+    }
+
+    private boolean canAnyMoveEscapeCheck(PieceColor color) {
+        for (int r = 0; r &lt; 8; r++) {
+            for (int c = 0; c &lt; 8; c++) {
+                Piece piece = board[r][c];
+                if (piece != null && piece.getColor() == color) {
+                    Position from = new Position(r, c);
+                    List&lt;Move&gt; validMoves = getValidMoves(from);
+                    if (!validMoves.isEmpty()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isSquareAttacked(Position target, PieceColor attackerColor) {
+        for (int row = 0; row &lt; 8; row++) {
+            for (int col = 0; col &lt; 8; col++) {
+                Piece piece = board[row][col];
+                if (piece != null && piece.getColor() == attackerColor) {
+                    if (canPieceAttackSquare(piece, new Position(row, col), target)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean canPieceAttackSquare(Piece piece, Position from, Position to) {
+        if (!to.isValid()) {
+            return false;
+        }
+
+        return switch (piece.getType()) {
+            case PAWN -&gt; canPawnAttack(from, to, piece);
+            case ROOK -&gt; isValidRookMove(from, to);
+            case KNIGHT -&gt; isValidKnightMove(from, to);
+            case BISHOP -&gt; isValidBishopMove(from, to);
+            case QUEEN -&gt; isValidQueenMove(from, to);
+            case KING -&gt; isValidKingMove(from, to, piece); // Note: King attack range is just normal move
+        };
+    }
+
+    private boolean canPawnAttack(Position from, Position to, Piece piece) {
+        int direction = piece.getColor() == PieceColor.WHITE ? 1 : -1;
+        int rowDiff = to.getRow() - from.getRow();
+        int colDiff = Math.abs(to.getCol() - from.getCol());
+
+        // Pawns only attack diagonally
+        return colDiff == 1 && rowDiff == direction;
+    }
+
+    private Position findKing(PieceColor color) {
+        for (int row = 0; row &lt; 8; row++) {
+            for (int col = 0; col &lt; 8; col++) {
+                Piece piece = board[row][col];
+                if (piece != null && piece.getType() == PieceType.KING && piece.getColor() == color) {
+                    return new Position(row, col);
+                }
+            }
+        }
+        return null;
+    }
+}</pre>
+
+    <h2 id="Game">6. Game.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
+
+/**
+ * Repräsentiert eine Spielinstanz (Session).
+ * &lt;p&gt;
+ * Diese Klasse speichert den gesamten Zustand eines Spiels, inklusive
+ * serialisiertem Schachbrett, Spielernamen, Zeitlimits und Status.
+ * Sie dient als Datentransferobjekt (DTO) für die API und als
+ * Entität für die Speicherung.
+ * &lt;/p&gt;
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Game {
+
+    /** Eindeutige ID des Spiels. */
+    private Long id;
+
+    /** Name des Spielers (Weiß). */
+    private String whitePlayer;
+
+    /** Name des Spielers (Schwarz). */
+    private String blackPlayer;
+
+    /** Das Schachbrett als JSON-String serialisiert. */
+    private String boardState;
+
+    /** Die Historie der Züge als JSON-String (oder referenziert). */
+    private String moveHistory;
+
+    /** Wer ist gerade am Zug? */
+    private PieceColor currentTurn;
+
+    /** Der Gewinner des Spiels (null, wenn noch nicht entschieden). */
+    private String winner; // "WHITE" or "BLACK"
+
+    /** Der aktuelle Status (LÄUFT, MATT, etc.). */
+    private GameStatus status;
+
+    /** Zeitstempel der Erstellung. */
+    private LocalDateTime createdAt;
+
+    /** Zeitstempel des letzten Zuges (für Timer-Berechnung). */
+    private LocalDateTime lastMoveAt;
+
+    private boolean isOnlineMode;
+
+    private boolean isCheck;
+
+    // Time in seconds. null means unlimited.
+    private Integer timeLimit;
+
+    private Integer whiteTimeRemaining;
+
+    private Integer blackTimeRemaining;
+
+    public void onCreate() {
+        createdAt = LocalDateTime.now();
+        lastMoveAt = LocalDateTime.now();
+    }
+
+    public void onUpdate() {
+        lastMoveAt = LocalDateTime.now();
+    }
+}</pre>
+
+    <h2 id="Move">7. Move.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Repräsentiert einen Schachzug.
+ * &lt;p&gt;
+ * Enthält Start- und Zielkoordinaten sowie Metadaten über Spezialzüge
+ * wie Rochade, En Passant oder Bauernumwandlung.
+ * &lt;/p&gt;
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Move {
+    /** Startfeld. */
+    private Position from;
+
+    /** Zielfeld. */
+    private Position to;
+
+    /** Die gezogene Figur (wird vom Backend gesetzt). */
+    private Piece piece;
+
+    /** Die geschlagene Figur (falls vorhanden). */
+    private Piece capturedPiece;
+
+    /** Markiert, ob dieser Zug eine Rochade ist. */
+    @JsonProperty("isCastling")
+    private boolean isCastling;
+
+    /** Markiert, ob dieser Zug ein En Passant Schlag ist. */
+    @JsonProperty("isEnPassant")
+    private boolean isEnPassant;
+
+    /**
+     * Bei Bauernumwandlung: In welche Figur soll umgewandelt werden?
+     * Standard: QUEEN.
+     */
+    private PieceType promotionPiece;
+}</pre>
+
+    <h2 id="Piece">8. Piece.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Repräsentiert eine Schachfigur auf dem Brett.
+ * &lt;p&gt;
+ * Jede Figur hat einen Typ (z.B. Turm), eine Farbe (Schwarz/Weiß) und
+ * einen Status, ob sie bereits bewegt wurde (wichtig für Rochade und
+ * Bauernsprung).
+ * &lt;/p&gt;
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Piece {
+    private PieceType type;
+    private PieceColor color;
+    private boolean hasMoved;
+
+    /**
+     * Erstellt eine neue Figur.
+     * 
+     * @param type  Der Typ der Figur (z.B. PAWN).
+     * @param color Die Farbe (WHITE/BLACK).
+     */
+    public Piece(PieceType type, PieceColor color) {
+        this.type = type;
+        this.color = color;
+        this.hasMoved = false;
+    }
+}</pre>
+
+    <h2 id="Position">9. Position.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * Repräsentiert eine Koordinate auf dem Schachbrett (Reihe, Spalte).
+ * &lt;p&gt;
+ * Dient als Hilfsklasse für Berechnungen und konvertiert zwischen
+ * interner Array-Indexierung (0-7) und Schach-Notation ("e4").
+ * &lt;/p&gt;
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Position {
+    private int row;
+    private int col;
+
+    /**
+     * Erstellt eine Position aus Schachnotation (z.B. "e2").
+     * 
+     * @param notation Der String (z.B. "a1" bis "h8").
+     */
+    public Position(String notation) {
+        // Convert chess notation (e.g., "e4") to row/col
+        this.col = notation.charAt(0) - 'a';
+        this.row = notation.charAt(1) - '1';
+    }
+
+    /**
+     * Konvertiert die Position zurück in Schachnotation.
+     * 
+     * @return String wie "e4".
+     */
+    public String toNotation() {
+        return String.valueOf((char) ('a' + col)) + (row + 1);
+    }
+
+    /**
+     * Prüft, ob die Position innerhalb des 8x8 Brettes liegt.
+     * 
+     * @return true, wenn 0 &lt;= row, col &lt; 8.
+     */
+    public boolean isValid() {
+        return row &gt;= 0 && row &lt; 8 && col &gt;= 0 && col &lt; 8;
+    }
+}</pre>
+
+    <h2 id="GameStatus">10. GameStatus.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+/**
+ * Enum für den Status eines Spiels.
+ */
+public enum GameStatus {
+    WAITING,
+    IN_PROGRESS,
+    CHECKMATE,
+    STALEMATE,
+    DRAW,
+    RESIGNED,
+    VICTORY_BY_TIME
+}</pre>
+
+    <h2 id="PieceType">11. PieceType.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+/**
+ * Enum für die Typen von Schachfiguren.
+ */
+public enum PieceType {
+    PAWN,
+    ROOK,
+    KNIGHT,
+    BISHOP,
+    QUEEN,
+    KING
+}</pre>
+
+    <h2 id="PieceColor">12. PieceColor.java</h2>
+    <pre>package com.schachspiel.chess.model;
+
+/**
+ * Enum für die Spielerfarbe (Schwarz/Weiß).
+ */
+public enum PieceColor {
+    WHITE,
+    BLACK
+}</pre>
+
+</body>
+
+</html>

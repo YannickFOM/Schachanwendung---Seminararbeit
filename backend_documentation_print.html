@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Schach Backend - Technische Dokumentation</title>
+    <style>
+        @media print {
+            body {
+                font-size: 12pt;
+                line-height: 1.5;
+                color: #000;
+                background: #fff;
+            }
+
+            a {
+                text-decoration: none;
+                color: #000;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            h1,
+            h2,
+            h3 {
+                page-break-after: avoid;
+            }
+
+            .code-block {
+                page-break-inside: avoid;
+                border: 1px solid #ddd;
+            }
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            /* Serif logic for academic papers */
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            line-height: 1.6;
+            background: #fdfdfd;
+        }
+
+        h1 {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 24pt;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 18pt;
+            margin-top: 40px;
+            border-bottom: 1px solid #ccc;
+            color: #444;
+        }
+
+        h3 {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 14pt;
+            margin-top: 25px;
+            color: #666;
+        }
+
+        h4 {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .code-block {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10pt;
+            background: #f5f5f5;
+            padding: 10px;
+            border-left: 4px solid #333;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+
+        ul {
+            margin-top: 5px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .note {
+            background: #eef;
+            padding: 10px;
+            border-left: 4px solid #66d;
+            font-style: italic;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="no-print"
+        style="background:#eef; padding:20px; text-align:center; margin-bottom:40px; border-bottom:2px solid #ccc;">
+        <strong>Anleitung zum PDF-Export:</strong><br>
+        Drücke <code>Rechtsklick -> Drucken</code> (oder STRG+P).<br>
+        Wähle als Ziel <strong>"Als PDF speichern"</strong>.
+    </div>
+
+    <h1>Technische Dokumentation: Schach-Backend</h1>
+
+    <p>Diese Dokumentation dient als detaillierte Referenz für die Implementierung der Schachlogik und der
+        Server-Architektur. Sie analysiert die Komponenten auf Klassen-, Feld- und Methodenebene.</p>
+
+    <h2>1. Domain Model (`com.schachspiel.chess.model`)</h2>
+
+    <h3>1.1 Klasse: `ChessBoard.java`</h3>
+    <p>Die Klasse <code>ChessBoard</code> ist das zentrale Element der Anwendungslogik. Sie kapselt den Zustand des 8x8
+        Spielfelds und implementiert das komplette Regelwerk des Schachspiels.</p>
+
+    <h4>1.1.1 Felder (State)</h4>
+    <ul>
+        <li><strong><code>private Piece[][] board</code></strong>: Ein zweidimensionales Array (8x8), das die Felder
+            repräsentiert. Indexierung erfolgt von [0][0] (A8) bis [7][7] (H1).</li>
+        <li><strong><code>private PieceColor currentTurn</code></strong>: Speichert, welcher Spieler am Zug ist (`WHITE`
+            oder `BLACK`).</li>
+        <li><strong><code>private List&lt;Move&gt; moveHistory</code></strong>: Eine Liste aller getätigten Züge zur
+            Validierung.</li>
+        <li><strong><code>private Position enPassantTarget</code></strong>: Ein transientes Feld für die
+            En-Passant-Logik. Speichert das Feld, das *nur in diesem* Zug geschlagen werden kann.</li>
+    </ul>
+
+    <h4>1.1.2 Konstruktoren</h4>
+    <ul>
+        <li><strong><code>public ChessBoard()</code></strong>: Initialisiert ein neues Spiel (Figuren in
+            Startaufstellung, Weiß am Zug).</li>
+        <li><strong><code>public ChessBoard(ChessBoard other)</code></strong>: Ein <strong>Deep-Copy
+                Konstruktor</strong>. Er ist essentiell für die Simulations-Logik, da er sicherstellt, dass simulierte
+            Züge das echte Brett nicht verändern.</li>
+    </ul>
+
+    <h3>1.1.3 Kern-Methoden</h3>
+
+    <div class="code-block">
+        public boolean isLegalMove(Move move) {
+        // 1. Geometrie
+        if (!isValidMove(move)) return false;
+        // 2. Simulation auf Kopie
+        ChessBoard simulation = this.copy();
+        simulation.makeMove(move);
+        // 3. Sicherheits-Check
+        return !simulation.isInCheck(this.currentTurn);
+        }
+    </div>
+
+    <p>Der Algorithmus für <strong>Schachmatt (`isCheckmate`)</strong> nutzt einen Brute-Force Ansatz:</p>
+    <ul>
+        <li>Wenn der König im Schach steht...</li>
+        <li>...probiere <em>jeden möglichen Zug</em> jeder eigenen Figur aus.</li>
+        <li>Wenn <em>kein einziger</em> Zug das Schachgebot auflöst, ist das Spiel verloren.</li>
+    </ul>
+
+    <h2>2. Service Layer (`GameService.java`)</h2>
+    <p>Der Service Layer verbindet die abstrakte Schachlogik mit der Anwendungslogik (Zeit, API, Speicherung).</p>
+
+    <h4>Persistenz-Strategie</h4>
+    <p>Das Projekt nutzt eine <strong>In-Memory Map</strong> (<code>ConcurrentHashMap</code>) anstelle einer
+        relationalen Datenbank. Dies reduziert die Komplexität für die Installation des Seminar-Prototypen erheblich.
+        Zur Speicherung wird das komplexe Schachbrett-Objekt mittels Jackson in einen JSON-String serialisiert
+        (<code>boardState</code>).</p>
+
+    <h4>Timeouts</h4>
+    <p>Da HTTP ein stateless Protokoll ist, kann der Server Timeouts nicht "aktiv" pushen. Die Zeitprüfung erfolgt
+        passiv bei jedem eingehenden Zug (<code>makeMove</code>) oder Polling-Request. Die verbrauchte Zeit wird exakt
+        anhand des Timestamps <code>lastMoveAt</code> berechnet.</p>
+
+    <h2>3. Architektur & Design</h2>
+
+    <h4>Warum Simulation statt Berechnung?</h4>
+    <p>Anstatt komplexe Vektor-Berechnungen durchzuführen, um zu prüfen, ob eine Linie blockiert ist oder ein Zug ein
+        "Abzugsschach" verursacht, verwendet die Engine einen Simulations-Ansatz ("Make move on copy"). Dieser ist
+        robuster, leichter zu warten und verhindert subtile Logikfehler bei Randfällen.</p>
+
+</body>
+
+</html>

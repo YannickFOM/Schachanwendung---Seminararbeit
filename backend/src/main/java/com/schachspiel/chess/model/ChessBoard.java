@@ -5,13 +5,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Repräsentiert das Schachbrett und beinhaltet die gesamte Spielregellogik.
+ * <p>
+ * Diese Klasse verwaltet das 8x8 Spielfeld, die Positionen der Figuren und
+ * überprüft
+ * die Gültigkeit von Zügen gemäß den offiziellen FIDE-Schachregeln.
+ * Sie implementiert Logik für Spezialzüge wie Rochade und En Passant sowie
+ * die Erkennung von Schach, Matt und Patt.
+ * </p>
+ */
 @Data
 public class ChessBoard {
+    /** Das 8x8 Spielfeld. Indexierung: [0][0] = A8, [7][7] = H1. */
     private Piece[][] board;
+
+    /** Die Farbe des Spielers, der aktuell am Zug ist. */
     private PieceColor currentTurn;
+
+    /** Historie aller getätigten Züge (für Validierung und Analyse). */
     private List<Move> moveHistory;
+
+    /**
+     * Speichert das Ziel-Feld für einen En Passant Schlag, falls verfügbar.
+     * Wenn ein Bauer einen Doppelschritt macht, wird das übersprungene Feld hier
+     * markiert.
+     */
     private Position enPassantTarget;
 
+    /**
+     * Erstellt ein neues Schachbrett in der Standard-Startaufstellung.
+     */
     public ChessBoard() {
         this.board = new Piece[8][8];
         this.currentTurn = PieceColor.WHITE;
@@ -19,7 +43,17 @@ public class ChessBoard {
         initializeBoard();
     }
 
-    // Copy constructor for simulation
+    /**
+     * Copy-Konstruktor zur Erstellung einer tiefen Kopie (Deep Copy) des Brettes.
+     * <p>
+     * Dieser Konstruktor wird hauptsächlich für die Zugsimulation verwendet, um zu
+     * prüfen,
+     * ob ein Zug den eigenen König im Schach zurücklässt, ohne das echte Brett zu
+     * verändern.
+     * </p>
+     *
+     * @param other Das zu kopierende Schachbrett.
+     */
     public ChessBoard(ChessBoard other) {
         this.board = new Piece[8][8];
         for (int i = 0; i < 8; i++) {
@@ -36,6 +70,11 @@ public class ChessBoard {
         this.enPassantTarget = other.enPassantTarget;
     }
 
+    /**
+     * Erstellt eine exakte Kopie dieses Brettes.
+     * 
+     * @return Eine neue Instanz von ChessBoard mit identischem Zustand.
+     */
     public ChessBoard copy() {
         return new ChessBoard(this);
     }
@@ -87,6 +126,17 @@ public class ChessBoard {
         }
     }
 
+    /**
+     * Prüft, ob ein Zug nach den Schachregeln legal ist.
+     * <p>
+     * Ein Zug ist legal, wenn:
+     * 1. Er den geometrischen Bewegungsregeln der Figur entspricht (`isValidMove`).
+     * 2. Er den eigenen König nicht im Schach zurücklässt (Selbstschach-Verbot).
+     * </p>
+     *
+     * @param move Der zu prüfende Zug.
+     * @return true, wenn der Zug erlaubt ist, sonst false.
+     */
     public boolean isLegalMove(Move move) {
         // 1. Check basic geometric rules
         if (!isValidMove(move)) {
@@ -130,7 +180,18 @@ public class ChessBoard {
         return validMoves;
     }
 
-    // Internal geometric validation (does NOT check for King safety)
+    /**
+     * Prüft die rein geometrische Gültigkeit eines Zuges für eine Figur.
+     * <p>
+     * Diese Methode prüft NICHT auf Schachgebote, sondern nur:
+     * - Sind Start- und Zielkoordinaten auf dem Brett?
+     * - Ist das Bewegunsmuster für den Figurentyp korrekt (z.B. Läufer diagonal)?
+     * - Ist der Pfad frei (für Figuren, die nicht springen können)?
+     * </p>
+     *
+     * @param move Der Zug.
+     * @return true, wenn das Bewegungsmuster korrekt ist.
+     */
     public boolean isValidMove(Move move) {
         Position from = move.getFrom();
         Position to = move.getTo();
@@ -300,6 +361,19 @@ public class ChessBoard {
         return !isSquareAttacked(crossedSquare, currentTurn == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE);
     }
 
+    /**
+     * Führt einen Zug auf dem Brett aus und aktualisiert den Spielzustand.
+     * <p>
+     * Diese Methode:
+     * - Bewegt die Figur.
+     * - Entfernt geschlagene Figuren (inkl. En Passant).
+     * - Führt Bauernumwandlung (Promotion) durch.
+     * - Bewegt den Turm bei einer Rochade.
+     * - Aktualisiert die Zughistorie und wechselt den aktiven Spieler.
+     * </p>
+     *
+     * @param move Der auszuführende Zug.
+     */
     public void makeMove(Move move) {
         Position from = move.getFrom();
         Position to = move.getTo();

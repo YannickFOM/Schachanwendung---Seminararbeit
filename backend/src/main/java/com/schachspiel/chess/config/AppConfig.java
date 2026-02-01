@@ -6,9 +6,25 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Konfiguration der Spring Boot Anwendung.
+ * <p>
+ * Hier werden globale Einstellungen wie JSON-Parsing (Jackson) und
+ * CORS-Richtlinien (Cross-Origin Resource Sharing) definiert.
+ * </p>
+ */
 @Configuration
 public class AppConfig {
 
+    /**
+     * Konfiguriert den JSON-Mapper.
+     * <p>
+     * Aktiviert die Unterstützung für Java 8 'LocalDateTime' (JSR310) und
+     * verhindert Fehler bei unbekannten JSON-Eigenschaften.
+     * </p>
+     * 
+     * @return Ein konfigurierter ObjectMapper.
+     */
     @Bean
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
@@ -17,6 +33,14 @@ public class AppConfig {
         return mapper;
     }
 
+    /**
+     * Konfiguriert CORS-Regeln, damit das Frontend auf die API zugreifen darf.
+     * <p>
+     * Erlaubt Anfragen von localhost:5173 (Vue.js) und localhost:3000.
+     * </p>
+     * 
+     * @return Der WebMvcConfigurer für CORS.
+     */
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {

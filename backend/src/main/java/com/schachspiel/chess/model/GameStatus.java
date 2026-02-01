@@ -1,5 +1,8 @@
 package com.schachspiel.chess.model;
 
+/**
+ * Enum für den Status eines Spiels.
+ */
 public enum GameStatus {
     WAITING,
     IN_PROGRESS,

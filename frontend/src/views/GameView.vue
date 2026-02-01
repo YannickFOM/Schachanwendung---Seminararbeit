@@ -222,6 +222,8 @@ export default {
         
         if (game.boardState) {
           const boardData = JSON.parse(game.boardState)
+          console.log('Parsed Board Data:', boardData) // DEBUG
+          console.log('First square (0,0):', boardData.board[0][0]) // DEBUG
           board.value = boardData.board
         }
 

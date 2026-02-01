@@ -31,4 +31,28 @@ public class Piece {
         this.color = color;
         this.hasMoved = false;
     }
+
+    public PieceType getType() {
+        return type;
+    }
+
+    public void setType(PieceType type) {
+        this.type = type;
+    }
+
+    public PieceColor getColor() {
+        return color;
+    }
+
+    public void setColor(PieceColor color) {
+        this.color = color;
+    }
+
+    public boolean isHasMoved() {
+        return hasMoved;
+    }
+
+    public void setHasMoved(boolean hasMoved) {
+        this.hasMoved = hasMoved;
+    }
 }

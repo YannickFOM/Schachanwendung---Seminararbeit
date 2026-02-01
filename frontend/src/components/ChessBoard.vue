@@ -126,12 +126,12 @@ export default {
       if (!piece) return ''
       
       const symbols = {
-        PAWN: '♟',
-        ROOK: '♜',
-        KNIGHT: '♞',
-        BISHOP: '♝',
-        QUEEN: '♛',
-        KING: '♚'
+        PAWN: '♟\uFE0E',
+        ROOK: '♜\uFE0E',
+        KNIGHT: '♞\uFE0E',
+        BISHOP: '♝\uFE0E',
+        QUEEN: '♛\uFE0E',
+        KING: '♚\uFE0E'
       }
       
       return symbols[piece.type] || ''
@@ -338,7 +338,10 @@ export default {
 
   .piece {
     font-size: 8vw; /* Scale piece with viewport */
-    text-shadow: none; /* Remove shadow on mobile for cleaner look */
+    /* Restore outline but remove drop shadow */
+    text-shadow: 
+      -1px -1px 0 #000, 1px -1px 0 #000,
+      -1px 1px 0 #000, 1px 1px 0 #000;
   }
 
   /* Improve touch response */

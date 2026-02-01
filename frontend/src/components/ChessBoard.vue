@@ -320,4 +320,39 @@ export default {
   color: #1a1a1a;
   text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
 }
-</style>
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 800px) {
+  .board-layout {
+    grid-template-columns: 20px auto;
+    grid-template-rows: auto 20px;
+    gap: 2px;
+  }
+
+  .board-square {
+    width: 11vw;
+    height: 11vw;
+    max-width: 48px; /* Prevent it getting too big on tablets if simpler */
+    max-height: 48px;
+  }
+
+  .piece {
+    font-size: 8vw; /* Scale piece with viewport */
+  }
+
+  /* Adjust capture/valid markers */
+  .valid-move::after {
+    width: 16px;
+    height: 16px;
+  }
+
+  .board-square.capture-move::after {
+    width: 90%;
+    height: 90%;
+    border-width: 4px;
+  }
+  
+  .coordinate-bar {
+      font-size: 10px;
+  }
+}

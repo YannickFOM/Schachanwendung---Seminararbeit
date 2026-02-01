@@ -636,4 +636,62 @@ export default {
 .rotate-btn:hover {
     background: #bbdefb;
 }
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  .game-view {
+    padding: 10px 5px; /* Reduce padding */
+  }
+
+  .game-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  /* Reorder: Player 2 (Top), Status, Player 1 (Bottom) logic is hard with Flex column without order
+     Let's keep simple stack: Player (Left Panel in desktop), Center, Player (Right Panel in desktop).
+     In column: Left Panel becomes Top. Right Panel becomes Bottom.
+     
+     Actually, often mobile wants: Opponent at top, YOU at bottom.
+     If we assume we are one of them, we might want to swap.
+     For hotseat (this app), Top/Center/Bottom is fine.
+  */
+
+  .player-panel {
+    width: 100%; /* Full width bars */
+    display: flex;
+    justify-content: space-between; /* Name left, Timer right */
+    align-items: center;
+    padding: 10px 20px;
+  }
+
+  .player-name {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .timer {
+    font-size: 1.5rem;
+  }
+
+  .game-center h1 {
+    font-size: 24px;
+  }
+  
+  .logo-area {
+      /* If there was a logo, scale it */
+  }
+  
+  .game-controls {
+      flex-wrap: wrap;
+      justify-content: center;
+  }
+  
+  .analysis-controls {
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+  }
+}
 </style>

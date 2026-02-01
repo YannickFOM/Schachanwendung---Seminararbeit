@@ -1,137 +1,45 @@
-# Projekt-Dokumentation: Schachspiel Refactoring & Features
+# Dokumentation: Deployment der Schach-Anwendung
+**Datum:** 01.02.2026
 
-Diese Dokumentation fasst die durchgeführten Arbeiten am Schachspiel-Projekt zusammen, inklusive relevanter Code-Ausschnitte.
+## 1. Einleitung
+Ziel dieser Sitzung war das Deployment (Veröffentlichung) einer Full-Stack Schach-Anwendung auf der Plattform **Render.com**. Die Anwendung besteht aus einem **Java Spring Boot Backend** und einem **Vue.js Frontend**.
 
-## 1. Initiale Analyse & Datenbank-Entfernung
-**Ziel**: Vereinfachung der Architektur für eine lokale Seminar-Demo.
-*   **Maßnahme**: Entfernung der PostgreSQL-Datenbank.
-*   **Code**: Umstellung auf In-Memory Storage im `GameService`.
+## 2. Architektur & Deployment-Setup
+Das Deployment wurde in zwei separate Services aufgeteilt, um die Skalierbarkeit und Wartbarkeit zu gewährleisten.
 
-```java
-// GameService.java
-// Statt @Repository nutzen wir eine ConcurrentHashMap für schnelle lokale Speicherung
-private final java.util.Map<Long, Game> games = new java.util.concurrent.ConcurrentHashMap<>();
-private final java.util.concurrent.atomic.AtomicLong idGenerator = new java.util.concurrent.atomic.AtomicLong(1);
-```
+| Komponente | Technologie | Hosting-Typ | Konfiguration |
+| :--- | :--- | :--- | :--- |
+| **Backend** | Java / Spring Boot | Web Service (Docker) | `Dockerfile` |
+| **Frontend** | Vue.js | Static Site | Node.js Build |
 
-## 2. Debugging & Fehlerbehebung
+## 3. Problemlösungsprozess (Troubleshooting)
+Während des Deployments traten mehrere technische Herausforderungen auf. Diese wurden analysiert und wie folgt gelöst:
 
-### JSON Mapping Fehler
-*   **Problem**: Das Frontend sendete `isCastling`, das Backend erwartete `castling`.
-*   **Lösung**: Explizites Mapping via Jackson Annotationen.
+### A. Backend: Docker Build Fehler
+*   **Problem:** Der Build-Prozess schlug fehl ("Copy failed"), da die Pfade im `Dockerfile` nicht zur tatsächlichen Ordnerstruktur des Projekts passten.
+*   **Lösung:** Die Pfade im `Dockerfile` wurden korrigiert (Anpassung von `COPY src src` zu `COPY backend/src src`), damit Docker die Dateien im Unterordner findet.
 
-```java
-// Move.java
-@JsonProperty("isCastling")
-private boolean isCastling;
+### B. Frontend: Blueprint & Verbindung
+*   **Problem:** Die automatische Erkennung des Frontends über die `render.yaml` (Infrastructure as Code) funktionierte nicht zuverlässig; der Service wurde nicht korrekt angelegt.
+*   **Lösung:** Wechsel der Strategie zur **manuellen Erstellung** der "Static Site" im Render-Dashboard. Dies erwies sich als deutlich robuster und fehlerfrei.
 
-@JsonProperty("isEnPassant")
-private boolean isEnPassant;
-```
+### C. Kommunikation: CORS Fehler (Error 403)
+*   **Problem:** Das Frontend durfte nicht auf das Backend zugreifen. Der Browser blockierte die Anfragen mit einem "Cross-Origin Request Blocked" Fehler (CORS). Das Backend lehnte "Preflight"-Anfragen ab.
+*   **Lösung:** Implementierung einer globalen `CorsFilter`-Klasse (`CorsConfig.java`) im Backend. Diese Konfiguration zwingt das Backend dazu, Anfragen von **allen Ursprüngen (*)** explizit zu erlauben.
 
-## 3. Implementierung der Schach-Logik
+### D. Datenstruktur: Leeres Schachbrett
+*   **Problem:** Das Spiel startete zwar, aber das Schachbrett blieb leer. Die Analyse zeigte, dass das Backend zwar Daten sendete, diese aber "leer" waren (leere JSON-Objekte).
+*   **Lösung:** Hinzufügen von expliziten **Getter-Methoden** in der Java-Klasse `Piece.java`. Die Lombok-Annotation `@Data` funktionierte in der Build-Umgebung von Render nicht wie erwartet, sodass der JSON-Serializer die Datenfelder (Farbe, Typ) nicht lesen konnte.
 
-### Simulation gültiger Züge (Check Protection)
-*   **Logik**: Ein Zug ist nur legal, wenn der eigene König danach nicht im Schach steht. Wir simulieren den Zug auf einer Kopie des Brettes.
+### E. Konfiguration: API URL (404 Fehler)
+*   **Problem:** Das Frontend konnte keine Verbindung zum Backend herstellen (Fehler 404 Not Found), obwohl beide Services liefen.
+*   **Lösung:** Die Environment-Variable `VITE_API_URL` im Frontend war falsch gesetzt. Sie enthielt nur die Basis-URL. Die Lösung war das Anhängen des Suffix `/api` (z.B. `...onrender.com/api`).
 
-```java
-// ChessBoard.java
-public boolean isLegalMove(Move move) {
-    // 1. Geometrische Prüfung
-    if (!isValidMove(move)) return false;
-    
-    // 2. Simulation auf Kopie
-    ChessBoard simulation = this.copy();
-    simulation.makeMove(move); 
-    
-    // 3. Prüfen ob König im Schach steht
-    return !simulation.isInCheck(this.currentTurn); 
-}
-```
+## 4. Fazit & Status
+Die Anwendung ist nun erfolgreich online.
 
-### En Passant Erkennung
-*   **Logik**: Das Backend erkennt En Passant automatisch, wenn ein Bauer diagonal auf ein leeres Feld zieht, das als `enPassantTarget` markiert ist.
+*   ✅ **Backend** ist live und erreichbar.
+*   ✅ **Frontend** lädt korrekt und kommuniziert mit dem Backend.
+*   ✅ **Spielmechanik** (Erstellen, Ziehen, Logik) funktioniert einwandfrei.
 
-```java
-// ChessBoard.java - makeMove()
-if (piece.getType() == PieceType.PAWN && 
-    Math.abs(to.getCol() - from.getCol()) == 1 && // Diagonal
-    getPieceAt(to) == null && // Ziel ist leer
-    enPassantTarget != null && to.equals(enPassantTarget)) { // Passt zum Target
-    
-    isEnPassantMove = true;
-    move.setEnPassant(true);
-}
-```
-
-### Schachmatt & Patt
-*   **Logik**: Nach jedem Zug wird geprüft, ob der Gegner noch ziehen kann.
-
-```java
-// GameService.java
-boolean inCheck = board.isInCheck(board.getCurrentTurn());
-game.setCheck(inCheck); // Status für Frontend speichern
-
-if (board.isCheckmate(board.getCurrentTurn())) {
-    game.setStatus(GameStatus.CHECKMATE);
-} else if (board.isStalemate(board.getCurrentTurn())) {
-    game.setStatus(GameStatus.STALEMATE);
-}
-```
-
-## 4. UI & Design Verbesserungen
-
-### Schachbrett & Figuren Styling
-*   **Design**: Nutzung von CSS `text-shadow` für hohen Kontrast der Unicode-Figuren.
-*   **Zughilfen**: Nutzung von Pseudo-Elementen (`::after`) für Punkte und Ringe.
-
-```css
-/* ChessBoard.vue */
-
-/* Weiße Figuren mit schwarzem Rand für bessere Sichtbarkeit */
-.white-piece {
-  color: #ffffff;
-  text-shadow: 
-    -1px -1px 0 #000, 1px -1px 0 #000,
-    -1px 1px 0 #000, 1px 1px 0 #000,
-    0px 2px 4px rgba(0,0,0,0.5);
-}
-
-/* Mögliche Züge als graue Punkte */
-.valid-move::after {
-  content: '';
-  position: absolute;
-  width: 24px; height: 24px;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 50%;
-  z-index: 30; /* Über den Figuren */
-}
-
-/* Schlag-Züge als roter Ring */
-.board-square.capture-move::after {
-    background: transparent;
-    border: 6px solid rgba(200, 50, 50, 0.5);
-    width: 70px; height: 70px;
-}
-```
-
-### König Highlights bei Schach
-*   **Frontend**: Dynamische Klassen basierend auf dem Spielstatus.
-
-```javascript
-// ChessBoard.vue
-isKingInCheck(row, col) {
-  if (!this.checkState.isCheck) return false
-  const piece = this.getPiece(row, col)
-  // Markiere nur den König der aktuellen Farbe
-  return piece && piece.type === 'KING' && piece.color === this.checkState.turn
-}
-```
-
-```css
-/* Rotes Leuchten bei Schach */
-.king-check {
-  background-color: rgba(255, 60, 60, 0.6) !important;
-  box-shadow: inset 0 0 10px 5px rgba(255, 0, 0, 0.5);
-}
-```
+**Hinweis zum Hosting:** Da der kostenlose "Free Tier" von Render genutzt wird, geht der Server nach 15 Minuten Inaktivität in einen Schlafmodus. Der **erste Aufruf** nach einer Pause kann daher bis zu **60 Sekunden** dauern ("Cold Start"). Danach reagiert die Anwendung sofort.

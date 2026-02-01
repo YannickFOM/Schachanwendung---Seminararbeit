@@ -10,55 +10,45 @@ Diese Anleitung führt Sie Schritt für Schritt durch den Prozess, sowohl das Ba
 
 ## Schritt 1: Code auf GitHub vorbereiten
 
-Stellen Sie sicher, dass die neuesten Änderungen in Ihr GitHub-Repository gepusht sind. Das beinhaltet:
-- `render.yaml` (Definiert Backend & Frontend)
-- `Dockerfile` (Für das Backend)
-- Änderungen in `frontend/src/services/api.js` (Für die variable URL)
+Stellen Sie sicher, dass die neuesten Änderungen gepusht sind (Backend & Frontend Code).
 
-## Schritt 2: Services auf Render erstellen
+## Schritt 2: Backend deployen (via Blueprint)
 
-Wir verwenden die Datei `render.yaml` ("Blueprints"), um alles automatisch anzulegen.
+Da das Backend bereits läuft (oder via `render.yaml` konfiguriert ist), lassen wir das so.
+Falls noch nicht geschehen: Syncen Sie Ihr Blueprint für das Backend.
 
-1.  Loggen Sie sich bei [Render.com](https://render.com/) ein.
-2.  Gehen Sie auf **"Blueprints"**.
-3.  Klicken Sie auf Ihr bestehendes Blueprint (z.B. "Yannicks Schachapp Deployment").
-4.  Klicken Sie auf **"Manual Sync"** (oben rechts) oder bestätigen Sie die erkannten Änderungen.
-5.  Render zeigt Ihnen nun an, dass ein **neuer Service** (`chess-frontend`) erstellt wird.
-6.  Bestätigen Sie mit **"Apply"** oder **"Sync"**.
-    Anschließend werden die Services erstellt:
-    - `chess-backend` (Web Service)
-    - `chess-frontend` (Static Site)
-7.  Klicken Sie auf **"Apply"**.
+## Schritt 3: Frontend manuell erstellen
 
-## Schritt 3: Backend-URL herausfinden & Frontend konfigurieren
+Da die automatische Erkennung des Frontends im Blueprint Probleme macht, erstellen wir es einfach manuell. Das geht sehr schnell.
 
-Das Frontend muss wissen, wo das Backend läuft.
+1.  Klicken Sie im Render-Dashboard oben rechts auf **"New +"** -> **"Static Site"**.
+2.  Wählen Sie Ihr Repository **"Schachspiel"**.
+3.  Füllen Sie die Felder wie folgt aus:
+    - **Name**: `chess-frontend`
+    - **Region**: Frankfurt (oder Ihre Wahl)
+    - **Root Directory**: `frontend`  <-- WICHTIG!
+    - **Build Command**: `npm install && npm run build`
+    - **Publish Directory**: `dist`
+4.  Klicken Sie auf **"Create Static Site"**.
 
-1.  Warten Sie, bis der **Backend-Service** (`chess-backend`) erfolgreich deployed wurde (grüner Haken).
-2.  Klicken Sie auf den Backend-Service und kopieren Sie die **URL** (oben links, z.B. `https://chess-backend-xyz.onrender.com`).
-3.  Gehen Sie zurück zum Dashboard und klicken Sie auf den **Frontend-Service** (`chess-frontend`).
-4.  Gehen Sie auf den Reiter **"Environment"**.
-5.  Sie sehen dort eine Variable `VITE_API_URL` mit dem Wert `REPLACE_WITH_BACKEND_URL`.
-6.  Klicken Sie auf **"Edit"** und fügen Sie **Ihre Backend-URL** ein.
-    - **WICHTIG:** Hängen Sie `/api` hinten an!
-    - Beispiel: `https://chess-backend-xyz.onrender.com/api`
-7.  Speichern Sie ("Save Changes").
+## Schritt 4: Frontend mit Backend verbinden
 
-## Schritt 4: Frontend neu deployen
+1.  Holen Sie sich die URL Ihres Backends (z.B. `https://chess-backend-xyz.onrender.com`).
+2.  Gehen Sie in Ihrem neuen Frontend-Service auf **"Environment"**.
+3.  Klicken Sie auf **"Add Environment Variable"**.
+4.  Tragen Sie ein:
+    - **Key**: `VITE_API_URL`
+    - **Value**: `https://chess-backend-xyz.onrender.com/api` (Vergessen Sie nicht das `/api` am Ende!)
+5.  Speichern Sie ("Save Changes").
 
-Nach der Änderung der Variable muss das Frontend neu gebaut werden.
-
-1.  Klicken Sie im Frontend-Service oben rechts auf **"Manual Deploy"** -> **"Deploy latest commit"**.
-2.  Warten Sie, bis der Build fertig ist.
+Render wird das Frontend nun automatisch neu bauen.
 
 ## Schritt 5: Fertig!
 
 Klicken Sie auf die URL des Frontends (z.B. `https://chess-frontend-abc.onrender.com`).
-Das Spiel sollte nun laden und sich mit dem Backend verbinden.
+Das Spiel läuft! 🎉
 
 ## Fehlerbehebung
 
-- **Frontend zeigt keine Spiele?** Prüfen Sie in der Browser-Konsole (F12), ob Netzwerkfehler auftreten.
-    - Falls ja: Stimmt die `VITE_API_URL`? Haben Sie `/api` am Ende?
-- **Backend startet nicht?** Prüfen Sie die Logs. Läuft der Docker-Build durch?
-- **Spin-down**: Denken Sie daran, dass beide Services im Free Tier nach 15 Minuten Inaktivität schlafen gehen. Der erste Aufruf dauert dann etwas länger.
+- **Weiße Seite?** Prüfen Sie die Browser-Konsole (F12).
+- **Verbindungsfehler?** Prüfen Sie, ob `VITE_API_URL` korrekt ist (mit `https://` und `/api`).

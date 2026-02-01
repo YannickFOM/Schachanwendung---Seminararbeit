@@ -19,5 +19,7 @@ body {
 
 #app {
   min-height: 100vh;
+  /* Fallback for mobile browsers */
+  min-height: 100dvh;
 }
 </style>

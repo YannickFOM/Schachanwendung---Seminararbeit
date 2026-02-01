@@ -338,6 +338,12 @@ export default {
 
   .piece {
     font-size: 8vw; /* Scale piece with viewport */
+    text-shadow: none; /* Remove shadow on mobile for cleaner look */
+  }
+
+  /* Improve touch response */
+  .board-square {
+      touch-action: manipulation; 
   }
 
   /* Adjust capture/valid markers */

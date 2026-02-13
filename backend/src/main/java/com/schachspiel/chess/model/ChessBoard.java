@@ -538,4 +538,53 @@ public class ChessBoard {
         }
         return null;
     }
+
+    public boolean isInsufficientMaterial() {
+        List<Piece> allPieces = new ArrayList<>();
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                if (board[r][c] != null) {
+                    allPieces.add(board[r][c]);
+                }
+            }
+        }
+
+        // King vs King
+        if (allPieces.size() == 2) {
+            return true;
+        }
+
+        // King + Minor Piece vs King
+        if (allPieces.size() == 3) {
+            Piece minorPiece = allPieces.stream()
+                    .filter(p -> p.getType() != PieceType.KING)
+                    .findFirst()
+                    .orElse(null);
+            return minorPiece != null
+                    && (minorPiece.getType() == PieceType.BISHOP || minorPiece.getType() == PieceType.KNIGHT);
+        }
+
+        // King + Bishop vs King + Bishop (Same color squares)
+        if (allPieces.stream().allMatch(p -> p.getType() == PieceType.KING || p.getType() == PieceType.BISHOP)) {
+            List<Position> bishopPositions = new ArrayList<>();
+            for (int r = 0; r < 8; r++) {
+                for (int c = 0; c < 8; c++) {
+                    Piece p = board[r][c];
+                    if (p != null && p.getType() == PieceType.BISHOP) {
+                        bishopPositions.add(new Position(r, c));
+                    }
+                }
+            }
+
+            if (bishopPositions.size() == 2 && allPieces.size() == 4) {
+                Position b1 = bishopPositions.get(0);
+                Position b2 = bishopPositions.get(1);
+                boolean b1Light = (b1.getRow() + b1.getCol()) % 2 == 0;
+                boolean b2Light = (b2.getRow() + b2.getCol()) % 2 == 0;
+                return b1Light == b2Light;
+            }
+        }
+
+        return false;
+    }
 }

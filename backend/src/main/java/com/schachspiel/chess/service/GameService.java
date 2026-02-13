@@ -185,6 +185,8 @@ public class GameService {
             game.setWinner(board.getCurrentTurn() == PieceColor.WHITE ? "BLACK" : "WHITE");
         } else if (board.isStalemate(board.getCurrentTurn())) {
             game.setStatus(GameStatus.STALEMATE);
+        } else if (board.isInsufficientMaterial()) {
+            game.setStatus(GameStatus.DRAW);
         }
 
         return game;
@@ -260,9 +262,16 @@ public class GameService {
             lastMove = moves.get(moveIndex - 1);
         }
 
+        // Calculate check/mate status at this position
+        PieceColor currentTurnAtPosition = replayBoard.getCurrentTurn();
+        boolean isCheckAtPosition = replayBoard.isInCheck(currentTurnAtPosition);
+        boolean isCheckmateAtPosition = replayBoard.isCheckmate(currentTurnAtPosition);
+
         java.util.Map<String, Object> result = new java.util.HashMap<>();
         result.put("boardState", serializeBoard(replayBoard));
         result.put("lastMove", lastMove);
+        result.put("isCheck", isCheckAtPosition);
+        result.put("isCheckmate", isCheckmateAtPosition);
 
         return result;
     }

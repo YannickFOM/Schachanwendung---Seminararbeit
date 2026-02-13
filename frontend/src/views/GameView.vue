@@ -109,6 +109,10 @@ export default {
       
       try {
         await api.makeMove(gameId.value, move)
+        
+        // Highlight the promotion move (same as normal moves)
+        lastMoveHighlight.value = move
+        
         await loadGame()
       } catch (error) {
         console.error('Error making promotion move:', error)
@@ -148,15 +152,22 @@ export default {
       return status
     }
 
-    const checkState = computed(() => ({
-      isCheck: isCheck.value,
-      isMate: gameStatus.value === 'CHECKMATE',
-      turn: currentTurn.value
-    }))
+    const checkState = computed(() => {
+      // During replay, use historical state; otherwise use current game state
+      const isInReplay = currentMoveIndex.value < totalMoves.value
+      
+      return {
+        isCheck: isInReplay ? historicalIsCheck.value : isCheck.value,
+        isMate: isInReplay ? historicalIsMate.value : (gameStatus.value === 'CHECKMATE'),
+        turn: currentTurn.value
+      }
+    })
 
     // Analysis State
     const currentMoveIndex = ref(0)
     const totalMoves = ref(0)
+    const historicalIsCheck = ref(false) // Check state at current replay position
+    const historicalIsMate = ref(false)  // Mate state at current replay position
     const isGameOver = computed(() => ['CHECKMATE', 'STALEMATE', 'DRAW', 'RESIGNED', 'VICTORY_BY_TIME'].includes(gameStatus.value))
     const isManualRotation = ref(false) // Toggle for manual override
     const isFlipped = ref(false) // The manual flip state
@@ -187,6 +198,10 @@ export default {
                 const boardData = JSON.parse(data.boardState)
                 board.value = boardData.board
                 currentMoveIndex.value = targetIndex
+                
+                // Update historical check/mate state for replay
+                historicalIsCheck.value = data.isCheck || false
+                historicalIsMate.value = data.isCheckmate || false
                 
                 // Set highlight
                 if (data.lastMove) {
@@ -231,13 +246,14 @@ export default {
         if (game.moveHistory) {
             const moves = JSON.parse(game.moveHistory)
             totalMoves.value = moves.length
-            // Only set currentMoveIndex if we are NOT navigating history (i.e. simple refresh sets to end)
-            // Or simplified: Always sync to end on regular load, unless we track "analysis active" state
-            // For now: Sync to end
-             if (!isGameOver.value || currentMoveIndex.value === 0) {
-                 currentMoveIndex.value = moves.length
-             }
+            // Always set to end position on initial load
+            currentMoveIndex.value = moves.length
         }
+
+        // Initialize historical check/mate state to current game state
+        // This ensures checkmate shows correctly when game ends
+        historicalIsCheck.value = game.check || false
+        historicalIsMate.value = game.status === 'CHECKMATE'
 
         // Cleanup board state if game is over (remove potential leftover highlights)
         if (isGameOver.value) {
@@ -309,6 +325,10 @@ export default {
             }
 
             await api.makeMove(gameId.value, move)
+            
+            // Highlight the move that was just made (same as in replay mode)
+            lastMoveHighlight.value = move
+            
             await loadGame()
         } catch (error) {
             console.error('Error making move:', error)
@@ -405,7 +425,7 @@ export default {
   align-items: center;
   padding: 20px;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #060538 0%, #021324 10%);
 }
 
 .game-header {
@@ -445,7 +465,7 @@ export default {
 }
 
 .player-panel.active-turn {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(2,19, 36, 0.15);
   border-color: rgba(255, 255, 255, 0.5);
   transform: scale(1.05);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);

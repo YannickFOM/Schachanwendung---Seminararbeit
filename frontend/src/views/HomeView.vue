@@ -2,7 +2,7 @@
   <div class="home-view">
     <div class="header">
       <h1>Yannicks Schachapp</h1>
-      <p class="subtitle">Online und Offline Schach spielen</p>
+      <p class="subtitle">Schach spielen mit Freunden</p>
     </div>
 
     <div class="menu-container">
@@ -158,7 +158,7 @@ export default {
 <style scoped>
 .home-view {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #060538 0%, #021324 10%);
   padding: 40px 20px;
 }
 
